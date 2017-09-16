@@ -1,0 +1,101 @@
+#' List of color palettes
+#'
+#' Use \code{\link{amboseli_palette}} to select palettes of desired length.
+#'
+#' @export
+amboseli_palettes <- list(
+  amboseli_div = list(NULL, #1
+                      NULL, #2
+                      c('#4f6f8e','#ffffe0','#573314'), #3
+                      c('#4f6f8e','#baceca','#ecaa6f','#573314'), #4
+                      c('#4f6f8e','#96b8bb','#ffffe0','#d18452','#573314'), #5
+                      c('#4f6f8e','#81abb2','#d6e2d4','#f6cc98','#bf6f41',
+                        '#573314'), #6
+                      c('#4f6f8e','#73a2ab','#baceca','#ffffe0','#ecaa6f',
+                        '#b26037','#573314'), #7
+                      c('#4f6f8e','#699ba6','#a6c1c2','#e2e9d8','#f8daad',
+                        '#dd945e','#a95730','#573314'), #8
+                      c('#4f6f8e','#6297a2','#96b8bb','#ccdbd1','#ffffe0',
+                        '#f4be86','#d18452','#a2502b','#573314'), #9
+                      c('#4f6f8e','#5c939e','#8bb0b6','#baceca','#e9eeda',
+                        '#f9e3b9','#ecaa6f','#c77848','#9c4b27','#573314'), #10
+                      c("#4f6f8e","#588f9c","#81abb2","#acc5c5","#d6e2d4",
+                        "#ffffe0","#f6cc98","#e19b63","#bf6f41","#974724",
+                        "#573314") #11
+  )
+)
+
+
+#' A color palette generator
+#'
+#' @param n Number of colors desired. If omitted, uses all colours.
+#' @param name Name of desired palette. Choices are:
+#'   \code{amboseli_div}
+#' @param type Either "continuous" or "discrete". Use continuous if you want
+#'   to automatically interpolate between colors.
+#'   @importFrom graphics rgb rect par image text
+#' @return A vector of colours.
+#' @export
+#' @keywords colors
+#' @examples
+#' make_palette("amboseli_div")
+#' make_palette("amboseli_div", 5)
+#'
+#' # If you need more colors than normally found in a palette, you
+#' # can use a continuous palette to interpolate between existing
+#' # colors
+#' pal <- make_palette(name = "amboseli_div", n = 100, type = "continuous")
+#' image(volcano, col = pal)
+make_palette <- function(name, n, type = c("discrete", "continuous")) {
+
+  type <- match.arg(type)
+  pal <- amboseli_palettes[[name]]
+
+  if (is.null(pal)) {
+    stop("Palette not found.")
+  }
+
+  if (missing(n)) {
+    n <- length(pal)
+  }
+
+  if (type == "discrete") {
+    if (n > length(pal)) {
+      stop("Number of requested colors greater than what palette can offer")
+    }
+    else if (n < 3) {
+      stop("Number of requested colors must be at least 3")
+    }
+    else {
+      pal <- pal[[n]]
+    }
+  }
+
+  out <- switch(type,
+                continuous = grDevices::colorRampPalette(pal[[length(pal)]])(n),
+                discrete = pal[1:n]
+  )
+  structure(out, class = "palette", name = name)
+}
+
+
+#' Print a color palette
+#'
+#' @param pal A vector of character hex RGB values
+#' @param border Color for the cell borders
+#' @param ...
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' black_and_white <- c("#000000", "#FFFFFF")
+#' print.palette(black_and_white)
+print.palette <- function(palette, border = "light gray", ...) {
+  n <- length(palette)
+  if (length(palette > 0)) {
+    plot(0, 0, type = "n", xlim = c(0, 1), ylim = c(0, 1),
+         axes = FALSE, xlab = "", ylab = "", ...)
+    rect(0:(n - 1)/n, 0, 1:n/n, 1, col = palette, border = border)
+  }
+}
