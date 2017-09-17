@@ -4,7 +4,7 @@
 #'
 #' @export
 amboseli_palettes <- list(
-  amboseli_div = list(NULL, #1
+  div_earthsky = list(NULL, #1
                       NULL, #2
                       c('#4f6f8e','#ffffe0','#573314'), #3
                       c('#4f6f8e','#baceca','#ecaa6f','#573314'), #4
@@ -22,6 +22,20 @@ amboseli_palettes <- list(
                       c("#4f6f8e","#588f9c","#81abb2","#acc5c5","#d6e2d4",
                         "#ffffe0","#f6cc98","#e19b63","#bf6f41","#974724",
                         "#573314") #11
+  ),
+  seq_swelling = list(NULL, #1
+                      c('#574532','#da8485'), #2
+                      c('#574532','#9c6250','#da8485'), #3
+                      c('#574532','#855844','#b16d5f','#da8485'), #4
+                      c('#574532','#7b533f','#9c6250','#bc7268','#da8485'), #5
+                      c('#574532','#73503c','#8e5c48','#a96859','#c2766d',
+                        '#da8485'), #6
+                      c('#574532','#6f4e3a','#855844','#9c6250','#b16d5f',
+                        '#c77871','#da8485'), #7
+                      c('#574532','#6b4d39','#7f5541','#925d4a','#a56656',
+                        '#b87064','#c97a73','#da8485'), #8
+                      c('#574532','#694c38','#7b533f','#8c5a47','#9c6250',
+                        '#ac6a5b','#bc7268','#cc7b76','#da8485') #9
   )
 )
 
@@ -61,10 +75,11 @@ make_palette <- function(name, n, type = c("discrete", "continuous")) {
 
   if (type == "discrete") {
     if (n > length(pal)) {
-      stop("Number of requested colors greater than what palette can offer")
+      stop(paste("Maximum number of colors for this palette is", length(pal)))
     }
-    else if (n < 3) {
-      stop("Number of requested colors must be at least 3")
+    else if (is.null(pal[[n]])) {
+      stop(paste("Number of requested colors must be at least",
+                 length(Filter(is.null, pal)) + 1))
     }
     else {
       pal <- pal[[n]]

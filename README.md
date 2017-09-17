@@ -31,15 +31,15 @@ Emily and Emily and I talked about how it would be neat to create a custom color
 By default, there are 11 colors:
 
 ``` r
-make_palette("amboseli_div")
+make_palette("div_earthsky")
 ```
 
 ![](plots/README-palette-full-1.png)
 
-It's called `amboseli_div` because it's a *diverging* color palette, which is useful when both low and high values are interesting and there is a meaningful, well-defined midpoint in the data. You can make make smaller palettes like this:
+It's called `div_earthsky` because it's a *diverging* color palette, which is useful when both low and high values are interesting and there is a meaningful, well-defined midpoint in the data. You can make make smaller palettes like this:
 
 ``` r
-make_palette("amboseli_div", 5)
+make_palette("div_earthsky", 5)
 ```
 
 ![](plots/README-palette-small-1.png)
@@ -47,8 +47,18 @@ make_palette("amboseli_div", 5)
 If you need more than 11 colors, you can use a continuous palette to interpolate between the existing colors:
 
 ``` r
-pal <- make_palette(name = "amboseli_div", n = 100, type = "continuous")
+pal <- make_palette(name = "div_earthsky", n = 100, type = "continuous")
 image(volcano, col = pal)
 ```
 
 ![](plots/README-palette-continuous-1.png)
+
+There's also a sequential color palette called `seq_swelling` based on this photo:
+
+![](img/220px-Baboon_buttocks.jpg)<br>
+
+``` r
+make_palette("seq_swelling")
+```
+
+![](plots/README-palette-swelling-full-1.png)
