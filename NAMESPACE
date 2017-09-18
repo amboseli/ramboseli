@@ -2,4 +2,5 @@
 
 S3method(print,palette)
 export(amboseli_palettes)
+export(get_n_members)
 export(make_palette)

@@ -1,0 +1,116 @@
+---
+title: "Group Membership"
+output: github_document
+---
+
+```{r setup, echo = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "group-membership"
+)
+```
+
+
+```{r load-packages, message = FALSE, warning = FALSE}
+library(ramboseli)
+library(tidyverse)
+```
+
+The function `get_n_members` calculates the number of individuals present, given a particular group and a date.
+
+*This will not work with "live" babase data until you have set up a connection between R and babase!* 
+
+This entails getting a papio login, and creating an ssh tunnel from your computer to papio in putty (Windows) or terminal (Mac/Unix).
+
+## Creating the connections
+
+On my machine, I type something like this into terminal to make the ssh tunnel:
+
+`ssh -f fac13@papio.biology.duke.edu -L 22222:localhost:5432 -N`
+
+If you get that sorted out, you can create a connection to babase:
+
+```{r hidden-connection, echo=FALSE}
+
+  # You will need to change user to your personal babase login AND get your password
+  babase <- DBI::dbConnect(RPostgreSQL::PostgreSQL(),
+                           host = "localhost",
+                           port = 2222,
+                           user = "fac13",
+                           dbname = "babase")
+
+  # Create connections to tables
+  biograph <- tbl(babase, "biograph")
+  members <- tbl(babase, "members")
+```
+
+```{r connect-to-babase, eval=FALSE}
+
+  # You will need to change user to your personal babase login AND get your password
+  # One approach to doing that is through Rstudio
+  # You could also just type it in your script, but that's not recommended for security.
+  babase <- DBI::dbConnect(RPostgreSQL::PostgreSQL(),
+                           host = "localhost",
+                           port = 2222,
+                           user = "fac13",
+                           dbname = "babase",
+                           password = rstudioapi::askForPassword("Database password"))
+
+  # Create connections to tables
+  biograph <- tbl(babase, "biograph")
+  members <- tbl(babase, "members")
+```
+
+
+## Not bothering with connections?
+
+An alternative approach is to feed the function unaltered `biograph` and `members` tables that you have loaded into your R environment from CSV files dumped directly from a babase query.
+
+## Examples
+
+#### Obtain group size for a particular date/group
+
+```{r example-get-n-members-single}
+# Get number of females in group 1.220 on Aug. 25, 2012
+get_n_members(biograph, members, 1.220, "2012-08-25", "F")
+```
+
+#### Add group size to existing data frame
+
+This function might be especially useful if you have an existing dataframe and you want to add group size to it. For example, you might decide that this would me an important predictor to include in some analysis you plan to run.
+
+In the example below, we'll add group size to a dataframe that contains three columns from biograph: sname, matgrp, and birthdate. The function will be used to calculate group size on each individual's date of birth. 
+
+I'll be using `dplyr` syntax, which might appear weird if you haven't encountered it before. The main thing to know is that the `>%>` operator that appears after each line can just be read as "and then perform...". I think `dplyr` is the best tool for both interacting with databases and data wrangling in R. A nice introduction to `dplyr` can be found here: [dplyr](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html) 
+
+Here's an example of how this function can be applied to an existing dataframe. To illustrate, we'll generate a small data set for testing the function. To keep it short, I'll select just 30 lines at random from biograph.
+
+```{r example-get-n-members-1}
+
+# Randomly select 30 rows from biograph (where matgrp is < 4 and sname is not missing)
+set.seed(1)
+test_data <- biograph %>% 
+  filter(!is.na(matgrp) & matgrp < 4 & !is.na(sname)) %>% 
+  select(sname, matgrp, birth) %>% 
+  collect() %>% 
+  sample_n(30)
+```
+
+What does this data set look like?
+
+```{r test-data}
+# Use print because by default dplyr only prints 10 rows to the console
+print(test_data, n = 30)
+```
+
+
+Now we're ready to apply the function to each row to obtain a group size on the date of birth.
+
+```{r r example-get-n-members-2}
+now_with_group_size <- test_data %>% 
+  rowwise() %>% 
+  mutate(grp_size_at_birth = get_n_members(biograph, members, matgrp, birth))
+
+print(now_with_group_size, n = 30)
+```
