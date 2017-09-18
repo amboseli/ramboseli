@@ -26,7 +26,7 @@ On my machine, I type something like this into terminal to make the ssh tunnel:
 
 If you get that sorted out, you can create a connection to babase:
 
-```{r hidden-connection, echo=FALSE}
+```{r hidden-connection, echo=FALSE, message=FALSE, warning=FALSE}
   library(ramboseli)
   library(tidyverse)
 

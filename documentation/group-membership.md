@@ -16,16 +16,6 @@ On my machine, I type something like this into terminal to make the ssh tunnel:
 
 If you get that sorted out, you can create a connection to babase:
 
-    #> Loading tidyverse: ggplot2
-    #> Loading tidyverse: tibble
-    #> Loading tidyverse: tidyr
-    #> Loading tidyverse: readr
-    #> Loading tidyverse: purrr
-    #> Loading tidyverse: dplyr
-    #> Conflicts with tidy packages ----------------------------------------------
-    #> filter(): dplyr, stats
-    #> lag():    dplyr, stats
-
 ``` r
   library(ramboseli)
   library(tidyverse)
