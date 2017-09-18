@@ -1,11 +1,6 @@
 Group Membership
 ================
 
-``` r
-library(ramboseli)
-library(tidyverse)
-```
-
 The function `get_n_members` calculates the number of individuals present, given a particular group and a date.
 
 *This will not work with "live" babase data until you have set up a connection between R and babase!*
@@ -17,11 +12,23 @@ Creating the connections
 
 On my machine, I type something like this into terminal to make the ssh tunnel:
 
-`ssh -f fac13@papio.biology.duke.edu -L 22222:localhost:5432 -N`
+`ssh -f fac13@papio.biology.duke.edu -L 2222:localhost:5432 -N`
 
 If you get that sorted out, you can create a connection to babase:
 
+    #> Loading tidyverse: ggplot2
+    #> Loading tidyverse: tibble
+    #> Loading tidyverse: tidyr
+    #> Loading tidyverse: readr
+    #> Loading tidyverse: purrr
+    #> Loading tidyverse: dplyr
+    #> Conflicts with tidy packages ----------------------------------------------
+    #> filter(): dplyr, stats
+    #> lag():    dplyr, stats
+
 ``` r
+  library(ramboseli)
+  library(tidyverse)
 
   # You will need to change user to your personal babase login AND get your password
   # One approach to doing that is through Rstudio
