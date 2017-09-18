@@ -28,6 +28,7 @@ Current functionality provided by the package:
 ----------------------------------------------
 
 -   [Plotting helpers and functions](documentation/plotting.md)
+-   [Group membership](documentation/group-membership.md)
 
 <br>
 
