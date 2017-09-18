@@ -29,9 +29,34 @@ Current functionality provided by the package:
 
 -   [Plotting helpers and functions](documentation/plotting.md)
 
-Guidelines for using `ramboseli` functions
-------------------------------------------
+<br>
+
+### Guidelines for using `ramboseli` functions
 
 TO DO: Expand this section
 
-Instructions to be added: \* Detailed instructions for linking babase to R via ssh tunnel \* Managing passwords and keeping them of your scripts: ssh key or rstudioapi::askForPassword() \* Creating connection to database using DBI::dbConnect() \* Best practices for supplying babase tables as arguments to functions 1. Supply a database connection and no tables to obtain data directly through queries - Uses most up-to-date data - Use when carrying out exploratory analysis - Not reproducible 2. Supply tables from the R environment and no database connection - Uses static input files (a "snapshot" of specific babase tables) - Reqires that user queries database first to produce static files and loads them into R environment - Use for final analysis if you desire reproducibility
+Instructions to be added: \* Detailed instructions for linking babase to R via ssh tunnel
+
+-   Managing passwords and keeping them of your scripts: ssh key or rstudioapi::askForPassword()
+
+-   Creating connection to database using DBI::dbConnect()
+
+<br>
+
+### Best practices for supplying babase tables as arguments to functions
+
+1.  Supply a database connection and no tables to obtain data directly through queries
+
+-   Uses most up-to-date data
+
+-   Use when carrying out exploratory analysis
+
+-   Not reproducible
+
+1.  Supply tables from the R environment and no database connection
+
+-   Uses static input files (a "snapshot" of specific babase tables)
+
+-   Reqires that user queries database first to produce static files and loads them into R environment
+
+-   Use for final analysis if you desire reproducibility
