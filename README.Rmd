@@ -1,13 +1,6 @@
 ---
 title: "An R package for the ARBP"
-date: "`r Sys.Date()`"
-output:
-  md_document:
-    variant: markdown_github
-vignette: >
-  %\VignetteIndexEntry{Vignette Title}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+output: github_document
 ---
 
 ```{r, echo = FALSE}
@@ -41,34 +34,25 @@ After you have installed the package once, you can simply load it in the future 
 ```
 
 
-## A custom color palette
-Emily and Emily and I talked about how it would be neat to create a custom color palette for plots that is based on dominant hues in photos from Amboseli. I created one such palette based on the photo below, and I added some functions to this package so that you can use it in an R plot.
+## Current functionality provided by the package:
 
-![](img/amboseli_small.jpg)<br>
-<sub><sup>Photo by [Sergey Pesterev](https://unsplash.com/photos/DWXR-nAbxCk?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)</sup></sub>
-
-By default, there are 11 colors:
-```{r palette-full, fig.height=3, fig.width=6}
-make_palette("div_earthsky")
-```
-
-It's called `div_earthsky` because it's a *diverging* color palette, which is useful when both low and high values are interesting and there is a meaningful, well-defined midpoint in the data. You can make make smaller palettes like this:
-```{r palette-small, fig.height=3, fig.width=6}
-make_palette("div_earthsky", 5)
-```
-
-If you need more than 11 colors, you can use a continuous palette to interpolate between the existing colors:
-```{r palette-continuous, fig.height=4, fig.width=6}
-pal <- make_palette(name = "div_earthsky", n = 100, type = "continuous")
-image(volcano, col = pal)
-```
+- [Plotting helpers and functions](documentation/plotting.md)
 
 
-There's also a sequential color palette called `seq_swelling` based on this photo:
+## Guidelines for using `ramboseli` functions
 
-![](img/220px-Baboon_buttocks.jpg)<br>
-```{r palette-swelling-full, fig.height=3, fig.width=6}
-make_palette("seq_swelling")
-```
+TO DO: Expand this section
 
-
+Instructions to be added:
+* Detailed instructions for linking babase to R via ssh tunnel
+* Managing passwords and keeping them of your scripts: ssh key or rstudioapi::askForPassword()
+* Creating connection to database using DBI::dbConnect()
+* Best practices for supplying babase tables as arguments to functions
+  1. Supply a database connection and no tables to obtain data directly through queries
+    - Uses most up-to-date data
+    - Use when carrying out exploratory analysis
+    - Not reproducible
+  2. Supply tables from the R environment and no database connection
+    - Uses static input files (a "snapshot" of specific babase tables)
+    - Reqires that user queries database first to produce static files and loads them into R environment
+    - Use for final analysis if you desire reproducibility

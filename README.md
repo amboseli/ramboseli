@@ -1,3 +1,6 @@
+An R package for the ARBP
+================
+
 The `ramboseli` package aims to provide a set of small functions and utilities for R that can be shared among members of the Amboseli Baboon Research Project. Currently it's just a barebones proof-of-concept, but this documentation will grow as features are added to the package.
 
 Preparation
@@ -21,44 +24,14 @@ After you have installed the package once, you can simply load it in the future 
   library(ramboseli)
 ```
 
-A custom color palette
-----------------------
+Current functionality provided by the package:
+----------------------------------------------
 
-Emily and Emily and I talked about how it would be neat to create a custom color palette for plots that is based on dominant hues in photos from Amboseli. I created one such palette based on the photo below, and I added some functions to this package so that you can use it in an R plot.
+-   [Plotting helpers and functions](documentation/plotting.md)
 
-![](img/amboseli_small.jpg)<br> <sub><sup>Photo by [Sergey Pesterev](https://unsplash.com/photos/DWXR-nAbxCk?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)</sup></sub>
+Guidelines for using `ramboseli` functions
+------------------------------------------
 
-By default, there are 11 colors:
+TO DO: Expand this section
 
-``` r
-make_palette("div_earthsky")
-```
-
-![](plots/README-palette-full-1.png)
-
-It's called `div_earthsky` because it's a *diverging* color palette, which is useful when both low and high values are interesting and there is a meaningful, well-defined midpoint in the data. You can make make smaller palettes like this:
-
-``` r
-make_palette("div_earthsky", 5)
-```
-
-![](plots/README-palette-small-1.png)
-
-If you need more than 11 colors, you can use a continuous palette to interpolate between the existing colors:
-
-``` r
-pal <- make_palette(name = "div_earthsky", n = 100, type = "continuous")
-image(volcano, col = pal)
-```
-
-![](plots/README-palette-continuous-1.png)
-
-There's also a sequential color palette called `seq_swelling` based on this photo:
-
-![](img/220px-Baboon_buttocks.jpg)<br>
-
-``` r
-make_palette("seq_swelling")
-```
-
-![](plots/README-palette-swelling-full-1.png)
+Instructions to be added: \* Detailed instructions for linking babase to R via ssh tunnel \* Managing passwords and keeping them of your scripts: ssh key or rstudioapi::askForPassword() \* Creating connection to database using DBI::dbConnect() \* Best practices for supplying babase tables as arguments to functions 1. Supply a database connection and no tables to obtain data directly through queries - Uses most up-to-date data - Use when carrying out exploratory analysis - Not reproducible 2. Supply tables from the R environment and no database connection - Uses static input files (a "snapshot" of specific babase tables) - Reqires that user queries database first to produce static files and loads them into R environment - Use for final analysis if you desire reproducibility
