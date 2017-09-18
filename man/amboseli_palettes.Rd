@@ -4,7 +4,7 @@
 \name{amboseli_palettes}
 \alias{amboseli_palettes}
 \title{List of color palettes}
-\format{An object of class \code{list} of length 2.}
+\format{An object of class \code{list} of length 4.}
 \usage{
 amboseli_palettes
 }

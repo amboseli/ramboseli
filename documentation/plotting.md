@@ -46,3 +46,23 @@ make_palette("seq_swelling")
 ```
 
 ![](plots/PLOTTING-palette-swelling-full-1.png)
+
+A sequential color palette called `seq_dryseason` based on this photo:
+
+![](../img/dry.jpg)<br>
+
+``` r
+make_palette("seq_dryseason")
+```
+
+![](plots/PLOTTING-palette-dryseason_full-1.png)
+
+There's also a sequential color palette called `seq_swelling` based on this photo:
+
+![](../img/wet.jpg)<br>
+
+``` r
+make_palette("seq_wetseason")
+```
+
+![](plots/PLOTTING-palette-wetseason-full-1.png)
