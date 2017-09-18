@@ -5,10 +5,14 @@ Plotting functions
   library(ramboseli)
 ```
 
-A custom color palette
-----------------------
+Custom color palettes
+---------------------
 
-Emily and Emily and I talked about how it would be neat to create a custom color palette for plots that is based on dominant hues in photos from Amboseli. I created one such palette based on the photo below, and I added some functions to this package so that you can use it in an R plot.
+Emily and Emily and I talked about how it would be neat to create custom color palettes for plots that are based on dominant hues in photos from Amboseli. I created examples of such palettes based on the photos below, and I added some functions to this package so that you can use them in an R plot.
+
+<br>
+
+#### div\_earthsky
 
 ![](../img/amboseli_small.jpg)<br> <sub><sup>Photo by [Sergey Pesterev](https://unsplash.com/photos/DWXR-nAbxCk?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)</sup></sub>
 
@@ -37,7 +41,7 @@ image(volcano, col = pal)
 
 ![](plots/PLOTTING-palette-continuous-1.png)
 
-There's also a sequential color palette called `seq_swelling` based on this photo:
+#### seq\_swelling
 
 ![](../img/220px-Baboon_buttocks.jpg)<br>
 
@@ -47,7 +51,7 @@ make_palette("seq_swelling")
 
 ![](plots/PLOTTING-palette-swelling-full-1.png)
 
-A sequential color palette called `seq_dryseason` based on this photo:
+#### seq\_dryseason
 
 ![](../img/dry.jpg)<br>
 
@@ -57,7 +61,7 @@ make_palette("seq_dryseason")
 
 ![](plots/PLOTTING-palette-dryseason_full-1.png)
 
-There's also a sequential color palette called `seq_swelling` based on this photo:
+#### seq\_wetseason
 
 ![](../img/wet.jpg)<br>
 
