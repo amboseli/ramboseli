@@ -17,7 +17,7 @@ Creating the connections
 
 On my machine, I type something like this into terminal to make the ssh tunnel:
 
-`ssh -f fac13@papio.biology.duke.edu -L 22222:localhost:5432 -N`
+`ssh -f fac13@papio.biology.duke.edu -L 2222:localhost:5432 -N`
 
 If you get that sorted out, you can create a connection to babase:
 

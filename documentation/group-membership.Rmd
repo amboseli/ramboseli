@@ -27,7 +27,7 @@ This entails getting a papio login, and creating an ssh tunnel from your compute
 
 On my machine, I type something like this into terminal to make the ssh tunnel:
 
-`ssh -f fac13@papio.biology.duke.edu -L 22222:localhost:5432 -N`
+`ssh -f fac13@papio.biology.duke.edu -L 2222:localhost:5432 -N`
 
 If you get that sorted out, you can create a connection to babase:
 
