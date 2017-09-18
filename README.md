@@ -35,10 +35,10 @@ Current functionality provided by the package:
 
 TO DO: Expand this section
 
-Instructions to be added: \* Detailed instructions for linking babase to R via ssh tunnel
+Instructions to be added:
 
+-   Detailed instructions for linking babase to R via ssh tunnel
 -   Managing passwords and keeping them of your scripts: ssh key or rstudioapi::askForPassword()
-
 -   Creating connection to database using DBI::dbConnect()
 
 <br>
@@ -47,16 +47,12 @@ Instructions to be added: \* Detailed instructions for linking babase to R via s
 
 1.  Supply a database connection and no tables to obtain data directly through queries
 
--   Uses most up-to-date data
+    -   Uses most up-to-date data
+    -   Use when carrying out exploratory analysis
+    -   Not reproducible
 
--   Use when carrying out exploratory analysis
+2.  Supply tables from the R environment and no database connection
 
--   Not reproducible
-
-1.  Supply tables from the R environment and no database connection
-
--   Uses static input files (a "snapshot" of specific babase tables)
-
--   Reqires that user queries database first to produce static files and loads them into R environment
-
--   Use for final analysis if you desire reproducibility
+    -   Uses static input files (a "snapshot" of specific babase tables)
+    -   Reqires that user queries database first to produce static files and loads them into R environment
+    -   Use for final analysis if you desire reproducibility
