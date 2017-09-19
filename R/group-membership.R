@@ -24,8 +24,8 @@ get_n_members <- function(biograph, members, my_grp, my_date, my_sex = NULL) {
   }
 
   n_members <- n_members %>%
-    dplyr::tally()
+    nrow()
 
-  return(n_members$n[[1]])
+  return(n_members)
 
 }

@@ -59,57 +59,36 @@ In the example below, we'll add group size to a dataframe that contains three co
 
 I'll be using `dplyr` syntax, which might appear weird if you haven't encountered it before. The main thing to know is that the `>%>` operator that appears after each line can just be read as "and then perform...". I think `dplyr` is the best tool for both interacting with databases and data wrangling in R. A nice introduction to `dplyr` can be found here: [dplyr](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html)
 
-Here's an example of how this function can be applied to an existing dataframe. To illustrate, we'll generate a small data set for testing the function. To keep it short, I'll select just 30 lines at random from biograph.
+Here's an example of how this function can be applied to an existing dataframe. To illustrate, we'll generate a small data set for testing the function. To keep it short, I'll select just 10 lines at random from biograph.
 
 ``` r
 
-# Randomly select 30 rows from biograph (where matgrp is < 4 and sname is not missing)
+# Randomly select 10 rows from biograph (where matgrp is < 4 and sname is not missing)
 set.seed(1)
 test_data <- biograph %>% 
   filter(!is.na(matgrp) & matgrp < 4 & !is.na(sname)) %>% 
   select(sname, matgrp, birth) %>% 
   collect() %>% 
-  sample_n(30)
+  sample_n(10)
 ```
 
 What does this data set look like?
 
 ``` r
-# Use print because by default dplyr only prints 10 rows to the console
-print(test_data, n = 30)
-#> # A tibble: 30 x 3
+test_data
+#> # A tibble: 10 x 3
 #>    sname matgrp      birth
 #>    <chr>  <dbl>     <date>
-#>  1   PUN  2.000 1992-05-19
-#>  2   WAO  2.200 2003-03-12
-#>  3   DEO  1.100 2008-09-12
-#>  4   CRU  1.100 2000-07-09
-#>  5   NAZ  1.000 1973-10-15
-#>  6   HAP  1.100 1992-12-17
-#>  7   FER  1.100 2008-09-03
-#>  8   WOK  2.200 2004-08-27
-#>  9   YEM  3.100 1997-02-13
-#> 10   NIS  1.110 2016-06-16
-#> 11   JNJ  1.000 1986-08-18
-#> 12   AVO  2.200 1999-10-21
-#> 13   DEV  1.100 2004-11-28
-#> 14   DYN  1.100 1997-08-21
-#> 15   VIC  1.000 1976-10-04
-#> 16   TEC  1.220 2006-12-20
-#> 17   EMU  1.100 1989-08-05
-#> 18   NOK  2.100 2003-03-08
-#> 19   ROM  1.220 2000-05-27
-#> 20   WOW  2.200 2010-08-16
-#> 21   LOU  2.200 2003-06-15
-#> 22   JNT  1.000 1973-04-05
-#> 23   CAF  1.120 2012-06-15
-#> 24   UFO  1.211 2016-06-10
-#> 25   PAU  2.000 1993-11-26
-#> 26   OBI  1.200 1996-01-09
-#> 27   WEJ  2.110 2016-04-08
-#> 28   HUN  1.110 2010-11-26
-#> 29   NOZ  2.100 2000-09-21
-#> 30   HEK  1.000 1983-09-03
+#>  1   PUN   2.00 1992-05-19
+#>  2   WAO   2.20 2003-03-12
+#>  3   DEO   1.10 2008-09-12
+#>  4   CRU   1.10 2000-07-09
+#>  5   NAZ   1.00 1973-10-15
+#>  6   HAP   1.10 1992-12-17
+#>  7   FER   1.10 2008-09-03
+#>  8   WOK   2.20 2004-08-27
+#>  9   YEM   3.10 1997-02-13
+#> 10   NIS   1.11 2016-06-16
 ```
 
 Now we're ready to apply the function to each row to obtain a group size on the date of birth.
@@ -119,41 +98,21 @@ now_with_group_size <- test_data %>%
   rowwise() %>% 
   mutate(grp_size_at_birth = get_n_members(biograph, members, matgrp, birth))
 
-print(now_with_group_size, n = 30)
-#> Source: local data frame [30 x 4]
+now_with_group_size
+#> Source: local data frame [10 x 4]
 #> Groups: <by row>
 #> 
-#> # A tibble: 30 x 4
+#> # A tibble: 10 x 4
 #>    sname matgrp      birth grp_size_at_birth
 #>    <chr>  <dbl>     <date>             <int>
-#>  1   PUN  2.000 1992-05-19                59
-#>  2   WAO  2.200 2003-03-12                66
-#>  3   DEO  1.100 2008-09-12                88
-#>  4   CRU  1.100 2000-07-09                58
-#>  5   NAZ  1.000 1973-10-15                44
-#>  6   HAP  1.100 1992-12-17                40
-#>  7   FER  1.100 2008-09-03                85
-#>  8   WOK  2.200 2004-08-27                69
-#>  9   YEM  3.100 1997-02-13                71
-#> 10   NIS  1.110 2016-06-16                70
-#> 11   JNJ  1.000 1986-08-18                68
-#> 12   AVO  2.200 1999-10-21                44
-#> 13   DEV  1.100 2004-11-28                70
-#> 14   DYN  1.100 1997-08-21                51
-#> 15   VIC  1.000 1976-10-04                44
-#> 16   TEC  1.220 2006-12-20                58
-#> 17   EMU  1.100 1989-08-05                28
-#> 18   NOK  2.100 2003-03-08                41
-#> 19   ROM  1.220 2000-05-27                35
-#> 20   WOW  2.200 2010-08-16               108
-#> 21   LOU  2.200 2003-06-15                68
-#> 22   JNT  1.000 1973-04-05                41
-#> 23   CAF  1.120 2012-06-15                29
-#> 24   UFO  1.211 2016-06-10                44
-#> 25   PAU  2.000 1993-11-26                70
-#> 26   OBI  1.200 1996-01-09                31
-#> 27   WEJ  2.110 2016-04-08                48
-#> 28   HUN  1.110 2010-11-26                65
-#> 29   NOZ  2.100 2000-09-21                40
-#> 30   HEK  1.000 1983-09-03                60
+#>  1   PUN   2.00 1992-05-19                59
+#>  2   WAO   2.20 2003-03-12                66
+#>  3   DEO   1.10 2008-09-12                88
+#>  4   CRU   1.10 2000-07-09                58
+#>  5   NAZ   1.00 1973-10-15                44
+#>  6   HAP   1.10 1992-12-17                40
+#>  7   FER   1.10 2008-09-03                85
+#>  8   WOK   2.20 2004-08-27                69
+#>  9   YEM   3.10 1997-02-13                71
+#> 10   NIS   1.11 2016-06-16                70
 ```

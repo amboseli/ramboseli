@@ -83,24 +83,23 @@ In the example below, we'll add group size to a dataframe that contains three co
 
 I'll be using `dplyr` syntax, which might appear weird if you haven't encountered it before. The main thing to know is that the `>%>` operator that appears after each line can just be read as "and then perform...". I think `dplyr` is the best tool for both interacting with databases and data wrangling in R. A nice introduction to `dplyr` can be found here: [dplyr](https://cran.r-project.org/web/packages/dplyr/vignettes/dplyr.html) 
 
-Here's an example of how this function can be applied to an existing dataframe. To illustrate, we'll generate a small data set for testing the function. To keep it short, I'll select just 30 lines at random from biograph.
+Here's an example of how this function can be applied to an existing dataframe. To illustrate, we'll generate a small data set for testing the function. To keep it short, I'll select just 10 lines at random from biograph.
 
 ```{r example-get-n-members-1}
 
-# Randomly select 30 rows from biograph (where matgrp is < 4 and sname is not missing)
+# Randomly select 10 rows from biograph (where matgrp is < 4 and sname is not missing)
 set.seed(1)
 test_data <- biograph %>% 
   filter(!is.na(matgrp) & matgrp < 4 & !is.na(sname)) %>% 
   select(sname, matgrp, birth) %>% 
   collect() %>% 
-  sample_n(30)
+  sample_n(10)
 ```
 
 What does this data set look like?
 
 ```{r test-data}
-# Use print because by default dplyr only prints 10 rows to the console
-print(test_data, n = 30)
+test_data
 ```
 
 
@@ -111,5 +110,5 @@ now_with_group_size <- test_data %>%
   rowwise() %>% 
   mutate(grp_size_at_birth = get_n_members(biograph, members, matgrp, birth))
 
-print(now_with_group_size, n = 30)
+now_with_group_size
 ```
