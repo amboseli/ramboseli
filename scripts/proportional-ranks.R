@@ -19,7 +19,9 @@ ranks_w_dates <- ranks %>%
 prop_ranks <- ranks_w_dates %>%
   filter(!(rnktype == "ALM" & rnkdate < ranked)) %>%
   group_by(grp, rnkdate, rnktype) %>%
-  mutate(prop_rank = 1 - (rank - 1) / (n() - 1))
+  mutate(n_grp = n(),
+         prop_rank = case_when(
+           n_grp == 1 ~ 1,
+           TRUE ~ 1 - (rank - 1) / (n_grp - 1)))
 
 prop_ranks$rnktype <- forcats::fct_recode(prop_ranks$rnktype, ADM = "ALM")
-
