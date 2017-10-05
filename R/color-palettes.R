@@ -1,4 +1,4 @@
-#' List of color palettes
+#' List of Amboseli color palettes
 #'
 #' Use \code{\link{amboseli_palette}} to select palettes of desired length.
 #'
@@ -128,7 +128,6 @@ make_palette <- function(name, n, type = c("discrete", "continuous")) {
 #' @param border Color for the cell borders
 #' @param ...
 #'
-#' @return
 #' @export
 #'
 #' @examples
