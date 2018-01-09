@@ -13,5 +13,10 @@ BugReports: https://github.com/amboseli/ramboseli/issues
 Depends:
     R (>= 3.1.0)
 Imports:
-    tidyverse (>= 1.1.1)
+    plyr (>= 1.8.4),
+    tidyverse (>= 1.2.1),
+    dbplyr (>= 1.1.0),
+    purrrlyr (>= 0.0.2),
+    RPostgreSQL (>= 0.6-2), 
+    zoo (>= 1.8-0)
 RoxygenNote: 6.0.1
