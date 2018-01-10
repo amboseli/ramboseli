@@ -49,19 +49,20 @@ dsi <- dsi(iyol, biograph_l, members_l, focals_l, females_l, grooming_l, min_cor
 proc.time() - ptm
 
 saveRDS(dsi, "data/dsi_2018-01-10.RDS")
+# dsi <- readRDS("data/dsi_2018-01-10.RDS")
 
 # Summarize DSI variables for top partners in each year of life
 # Takes about 3 or 4 minutes
 dsi_summary <- dsi_summary(dsi)
 
 
-# calculate-csi -----------------------------------------------------------
+# calculate-sci -----------------------------------------------------------
 
-# Calculate CSI subset for each row of data
-# Warning: takes ~1.5 hours!!!!
+# Calculate SCI subset for each row of data
+# Warning: takes 50 minutes!!!!
 ptm <- proc.time()
-csi <- csi(iyol, members_l, focals_l, females_l, grooming_l, min_res_days = 60)
+sci <- sci(iyol, members_l, focals_l, females_l, grooming_l, min_res_days = 60)
 proc.time() - ptm
 
-saveRDS(csi, "data/csi_2018-01-10.RDS")
-
+saveRDS(sci, "data/sci_2018-01-10.RDS")
+# sci <- readRDS("data/sci_2018-01-10.RDS")
