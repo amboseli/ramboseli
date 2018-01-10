@@ -940,7 +940,7 @@ get_groom_dates <- function(my_sub, members_l, df, my_sex_var, my_role, my_sex) 
 #' @return The input row with an additional list column containing the subset
 #'
 #' @examples
-get_csi_subset <- function(df, members_l, focalcount, f_count, grooming_interactions, min_res_days = 60) {
+get_sci_subset <- function(df, members_l, focalcount, f_count, grooming_interactions, min_res_days = 60) {
 
   zero_daily_count <- 1/365.25
   log_zero_daily_count <- log2(zero_daily_count)
@@ -1047,7 +1047,7 @@ get_csi_subset <- function(df, members_l, focalcount, f_count, grooming_interact
   return(my_subset)
 }
 
-#' Calculate CSI variables from individual-year-of-life data
+#' Calculate SCI variables from individual-year-of-life data
 #'
 #' @param my_iyol Individual-year-of-life data.
 #' @param members_l A subset of members table produced by the function 'subset_members'
@@ -1056,11 +1056,11 @@ get_csi_subset <- function(df, members_l, focalcount, f_count, grooming_interact
 #' @param grooming_interactions A subset of grooming data produced by the function 'subset_grooming'
 #' @param min_res_days The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.
 #'
-#' @return The input data with an additional list columsn containing the full CSI subset and variables.
+#' @return The input data with an additional list columsn containing the full SCI subset and variables.
 #' @export
 #'
 #' @examples
-csi <- function(my_iyol, members_l, focalcount, f_count, grooming_interactions, min_res_days = 60) {
+sci <- function(my_iyol, members_l, focalcount, f_count, grooming_interactions, min_res_days = 60) {
 
   # Return an empty tibble if the subset is empty
   if (is.null(my_iyol) |
@@ -1074,7 +1074,7 @@ csi <- function(my_iyol, members_l, focalcount, f_count, grooming_interactions, 
   my_iyol$subset <- list(NULL)
   pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
   for (i in 1:nrow(my_iyol)) {
-    my_iyol[i, ]$subset <- list(get_csi_subset(my_iyol[i, ], members_l,
+    my_iyol[i, ]$subset <- list(get_sci_subset(my_iyol[i, ], members_l,
                                                focalcount, f_count,
                                                grooming_interactions,
                                                min_res_days))

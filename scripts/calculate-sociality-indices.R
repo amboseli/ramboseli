@@ -31,37 +31,39 @@ grooming_l <- subset_grooming(babase, members_l)
 iyol <- make_iyol(babase, members_l, focals_l, grooming_l)
 
 saveRDS(iyol, "data/iyol_2018-01-10.RDS")
-# iyol <- readRDS("iyol_2018-01-10.RDS")
+# iyol <- readRDS("data/iyol_2018-01-10.RDS")
 
 
 # calculate-dsi -----------------------------------------------------------
 
 ## Restrict to groups where the animal was present for at least 60 days
-iyol <- iyol %>%
+iyol_dsi <- iyol %>%
   filter(days_present >= 60)
-
-temp <- iyol[1:10, ]
 
 # Calculate DSI subset for each row of data
 # Warning: takes ~7 hours!!!!
 ptm <- proc.time()
-dsi <- dsi(iyol, biograph_l, members_l, focals_l, females_l, grooming_l, min_cores_days = 60)
+dsi <- dsi(iyol_dsi, biograph_l, members_l, focals_l, females_l, grooming_l, min_cores_days = 60)
 proc.time() - ptm
 
 saveRDS(dsi, "data/dsi_2018-01-10.RDS")
+# dsi <- readRDS("data/dsi_2018-01-10.RDS")
 
 # Summarize DSI variables for top partners in each year of life
 # Takes about 3 or 4 minutes
 dsi_summary <- dsi_summary(dsi)
 
 
-# calculate-csi -----------------------------------------------------------
+# calculate-sci -----------------------------------------------------------
 
-# Calculate CSI subset for each row of data
-# Warning: takes ~1.5 hours!!!!
+iyol_sci <- iyol %>%
+  filter(days_present >= 60)
+
+# Calculate SCI subset for each row of data
+# Warning: takes ~50 minutes!!!!
 ptm <- proc.time()
-csi <- csi(iyol, members_l, focals_l, females_l, grooming_l, min_res_days = 60)
+sci <- sci(iyol_sci, members_l, focals_l, females_l, grooming_l, min_res_days = 60)
 proc.time() - ptm
 
-saveRDS(csi, "data/csi_2018-01-10.RDS")
-
+saveRDS(sci, "data/sci_2018-01-10.RDS")
+# sci <- readRDS("data/sci_2018-01-10.RDS")
