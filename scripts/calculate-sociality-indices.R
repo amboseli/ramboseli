@@ -18,8 +18,8 @@ babase <- DBI::dbConnect(
   host = "localhost",
   port = 2222,
   user = "fac13",
-  dbname = "babase"
-)
+  dbname = "babase",
+  password = rstudioapi::askForPassword("Database password"))
 
 # Get local copy of biograph table
 biograph_l <- collect(tbl(babase, "biograph"))
