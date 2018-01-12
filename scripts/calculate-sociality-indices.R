@@ -8,6 +8,11 @@ new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"
 if (length(new.packages)) install.packages(unlist(new.packages))
 lapply(list.of.packages, require, character.only = T)
 
+# Run something like this in terminal (Mac) or PuTTY (Windows)
+# Will need to modify login ("fac13") and enter your password
+#
+# ssh -f fac13@papio.biology.duke.edu -L 2222:localhost:5432 -N
+
 babase <- DBI::dbConnect(
   RPostgreSQL::PostgreSQL(),
   host = "localhost",
