@@ -587,7 +587,8 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focalcount, f_count, gr
     partner_dates <- my_members %>%
       dplyr::filter(sname == partner_sname)
 
-    overlap_dates <- as.Date(dplyr::intersect(focal_dates$date, partner_dates$date))
+    overlap_dates <- as.Date(dplyr::intersect(focal_dates$date, partner_dates$date),
+                             origin = "1970-01-01")
 
     return(overlap_dates)
   }
