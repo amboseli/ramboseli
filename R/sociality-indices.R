@@ -691,7 +691,7 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focalcount, f_count, gr
 
   # Filter and calculate variables
   my_subset <- my_subset %>%
-    dplyr::filter(coresidence_days > min_cores_days & n_females > 0 & n_focals > 0) %>%
+    dplyr::filter(coresidence_days >= min_cores_days & n_females > 0 & n_focals > 0) %>%
     dplyr::mutate(OE = (n_focals / n_females) / coresidence_days,
                   log2OE = log2(OE)) %>%
     dplyr::filter(!is.na(OE))
@@ -699,7 +699,7 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focalcount, f_count, gr
   # Exit if no data meet the criteria, exit without proceeding further
   # Return NULL
   if (nrow(my_subset) == 0) {
-    return(NULL)
+    return(dplyr::tbl_df(NULL))
   }
 
   ## Grooming between dyad during the period of interest
