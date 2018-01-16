@@ -5,7 +5,8 @@ dsi_summary <- readRDS("data/dsi_summary_2018-01-10.RDS")
 
 library(scales)
 
-# plotting ----------------------------------------------------------------
+
+# single-individual -------------------------------------------------------
 
 temp <- dsi %>%
   select(-subset) %>%
@@ -44,6 +45,13 @@ ggplot(filter(temp, res_g_adj > -9999),
                        trans = sqrt_trans()) +
   facet_wrap(~grp) +
   theme_minimal()
+
+# temp <- dsi %>%
+#   select(-subset) %>%
+#   unnest()
+#
+# temp$dsi <- temp$res_g_adj
+# temp[is.infinite(temp$dsi), ]$dsi <- NA
 
 
 # dsi_sci -----------------------------------------------------------------
@@ -358,3 +366,61 @@ ggplot(dsi_reciprocity, aes(x = age_class, y = r_reciprocity)) +
   facet_grid(sex ~ partner_type) +
   theme_journal_x2() +
   labs(x = "Age", y = "Mean Reciprocity with Top 3 Partners")
+
+
+
+# between-group-dsi-distributions -----------------------------------------
+
+get_perc90 <- function(df) {
+
+  sbs <- df %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(dyad = paste(sort(c(sname, partner)), collapse = '-'),
+                  dyad_type = paste(sort(c(sname_sex, partner_sex)), collapse = '-')) %>%
+    dplyr::ungroup() %>%
+    filter(dyad_type != "M-M")
+
+  res <- quantile(sbs$res_g_adj, probs = 0.9)
+}
+
+get_perc50 <- function(df) {
+
+  sbs <- df %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(dyad = paste(sort(c(sname, partner)), collapse = '-'),
+                  dyad_type = paste(sort(c(sname_sex, partner_sex)), collapse = '-')) %>%
+    dplyr::ungroup() %>%
+    filter(dyad_type != "M-M")
+
+  res <- quantile(sbs$res_g_adj, probs = 0.5)
+}
+
+
+library(ggridges)
+library(viridis)
+
+temp <- dsi %>%
+  mutate(is_empty = map_lgl(subset, is.null)) %>%
+  filter(!is_empty) %>%
+  mutate(perc90 = map_dbl(subset, get_perc90),
+         perc50 = map_dbl(subset, get_perc50))
+
+temp1 <- temp %>%
+  select(-subset, -dsi, -is_empty) %>%
+  mutate(perc90 = ifelse(perc90 < -9999, NA, perc90),
+         perc50 = ifelse(perc50 < -9999, NA, perc50))
+
+temp1 <- temp1 %>%
+  gather(var, value, perc90, perc50)
+
+temp1$var <- fct_recode(temp1$var, "90th Percentile" = "perc90", "50th Percentile" = "perc50")
+
+
+ggplot(temp1, aes(x = value, y = factor(grp), fill = ..x..)) +
+  geom_density_ridges_gradient(scale = 2.5, rel_min_height = 0.01, gradient_lwd = 1.) +
+  scale_fill_viridis(option = "plasma", guide = FALSE) +
+  facet_grid(var ~ ., scales = "free") +
+  theme_minimal() +
+  labs(x = "DSI value", y = "Group",
+       title = "Between-group variation in DSI percentile distributions")
+
