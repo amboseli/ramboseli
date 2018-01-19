@@ -428,7 +428,10 @@ ggplot(temp1, aes(x = value, y = factor(grp), fill = ..x..)) +
 
 # compare-dsi-population-vs-within-group ----------------------------------
 
-my_row <- sample_n(iyol, 1)
+my_row <- sample_n(iyol_dsi, 1)
+my_row <- filter(iyol_dsi, year(start) == 2006 & sname == "NOO")
+my_row <- filter(iyol_dsi, year(start) == 2010 & sname == "EAG")
+
 temp <- my_row
 temp1 <- my_row
 
@@ -441,22 +444,25 @@ temp$subset <- list(get_dyadic_subset(temp, biograph_l,
 temp <- temp %>%
   dplyr::mutate(dsi = purrr::pmap(list(sname, subset), get_focal_dsi))
 
-# ggplot(filter(temp$subset[[1]], res_g_adj > -9999),
-#        aes(x = res_g_adj, y = factor(grp), fill = factor(grp))) +
-#   geom_density_ridges(scale = 1.25, rel_min_height = 0.01, gradient_lwd = 1., alpha = 0.5) +
-#   facet_grid(dyad_type ~ .) +
-#   scale_fill_brewer(palette = "Set1", name = "Group") +
-#   theme_journal() +
-#   labs(x = "Dyadic Sociality Index", y = "Group")
+ggplot(filter(temp$subset[[1]], res_g_adj > -9999),
+       aes(x = res_g_adj, y = factor(grp), fill = factor(grp))) +
+  geom_density_ridges(scale = 1.25, rel_min_height = 0.01, gradient_lwd = 1., alpha = 0.5) +
+  facet_grid(dyad_type ~ .) +
+  # scale_fill_brewer(palette = "Set1", name = "Group") +
+  scale_fill_manual(values = c("gray50", "firebrick", "gray50", "gray50", "gray50"),
+                    guide = FALSE) +
+  theme_journal() +
+  labs(x = "Dyadic Sociality Index", y = "Group")
 
 p_data <- temp$dsi[[1]]
 p_data$bond_strength <- factor(p_data$bond_strength,
                                levels = c("Neither", "Bonded", "StronglyBonded"))
 
-p1 <- ggplot(p_data, aes(x = bond_strength, fill = factor(bond_strength))) +
+p1 <- ggplot(p_data, aes(x = bond_strength)) +
   geom_bar(color = "black") +
   facet_wrap(~dyad_type) +
-  scale_fill_brewer(palette = "Reds", name = "Group") +
+  # scale_fill_brewer(palette = "Reds", name = "Group", guide = FALSE, drop = FALSE) +
+  scale_x_discrete(drop = FALSE) +
   theme_journal() +
   labs(x = "Bond Strength", y = "# Bonds",
        title = paste0(my_row$sname, "'s relationship quantities relative to population"),
@@ -465,10 +471,9 @@ p1 <- ggplot(p_data, aes(x = bond_strength, fill = factor(bond_strength))) +
 
 
 # Within-group
-temp1$subset <- list(get_dyadic_subset(temp1, biograph_l,
-                                       members_l, focals_l, females_l,
-                                       grooming_l,
-                                       min_cores_days, within_grp = TRUE))
+temp1$subset <- list(get_dyadic_subset(temp1, biograph_l, members_l, focals_l,
+                                       females_l, grooming_l, min_cores_days,
+                                       within_grp = TRUE))
 
 temp1 <- temp1 %>%
   dplyr::mutate(dsi = purrr::pmap(list(sname, subset), get_focal_dsi))
@@ -477,7 +482,7 @@ temp1 <- temp1 %>%
 #        aes(x = res_g_adj, y = factor(grp), fill = factor(grp))) +
 #   geom_density_ridges(scale = 1.25, rel_min_height = 0.01, alpha = 0.5) +
 #   facet_grid(dyad_type ~ .) +
-#   scale_fill_manual(values = brewer.pal(3, "Set1")[2], name = "Group") +
+#   scale_fill_manual(values = brewer.pal(4, "Set1")[4], name = "Group") +
 #   theme_journal() +
 #   labs(x = "Dyadic Sociality Index", y = "Group")
 
@@ -485,11 +490,12 @@ p1_data <- temp1$dsi[[1]]
 p1_data$bond_strength <- factor(p1_data$bond_strength,
                                levels = c("Neither", "Bonded", "StronglyBonded"))
 
-p2 <- ggplot(p1_data, aes(x = bond_strength, fill = factor(bond_strength))) +
+p2 <- ggplot(p1_data, aes(x = bond_strength)) +
   geom_bar(color = "black") +
   facet_wrap(~dyad_type) +
-  scale_fill_brewer(palette = "Blues", name = "Group") +
+  # scale_fill_brewer(palette = "Reds", name = "Group", guide = FALSE, drop = FALSE) +
   theme_journal() +
+  scale_x_discrete(drop = FALSE) +
   labs(x = "Bond Strength", y = "# Bonds",
        title = paste0(my_row$sname, "'s relationship quantities relative to group"),
        subtitle = paste0(my_row$start, " -- ", my_row$end))
