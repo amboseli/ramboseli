@@ -175,7 +175,7 @@ subset_focals <- function(babase, members_l) {
   focals <- dplyr::bind_rows(focals, focals_altos_84to96, focals_altos_96to99,
                              focals_hooks_84to96, focals_hooks_96to99)
 
-  focalcount <- focals %>%
+  focals_l <- focals %>%
     dplyr::ungroup() %>%
     dplyr::inner_join(biograph_l, by = "sname") %>%
     dplyr::filter(sex == "F") %>%
@@ -186,11 +186,11 @@ subset_focals <- function(babase, members_l) {
     dplyr::arrange(date) %>%
     dplyr::ungroup()
 
-  ## Restrict the focalcount data to the same date restrictions of members
-  focalcount <- focalcount %>%
+  ## Restrict the focal count data to the same date restrictions of members
+  focals_l <- focals_l %>%
     dplyr::semi_join(members_l, by = c("grp", "date"))
 
-  return(focalcount)
+  return(focals_l)
 
 }
 
@@ -208,13 +208,13 @@ subset_females <- function(members_l) {
   message("Finding all females samples...")
 
   ## Get a count of number of adult females per day in a grp
-  f_count <- members_l %>%
+  females_l <- members_l %>%
     dplyr::filter(sex == "F") %>%
     dplyr::group_by(grp, date) %>%
     dplyr::summarise(nr_females = n()) %>%
     dplyr::ungroup()
 
-  return(f_count)
+  return(females_l)
 
 }
 
@@ -326,13 +326,13 @@ subset_grooming <- function(babase, members_l) {
   no_issue_actor$flag_no_issue_actor <- 1
   no_issue_actee$flag_no_issue_actee <- 1
 
-  grooming_interactions <- grooming %>%
+  grooming_l <- grooming %>%
     dplyr::left_join(no_issue_actor, by = c("actor", "yearmon")) %>%
     dplyr::left_join(no_issue_actee, by = c("actee", "yearmon")) %>%
     dplyr::left_join(issue_actor, by = c("actor", "yearmon")) %>%
     dplyr::left_join(issue_actee, by = c("actee", "yearmon"))
 
-  grooming_interactions <- grooming_interactions %>%
+  grooming_l <- grooming_l %>%
     dplyr::mutate(actor_grp = dplyr::case_when(
       (is.na(flag_no_issue_actor) & is.na(flag_issue_actor) & actor_grp > 3) ~ actee_grp,
       (is.na(flag_no_issue_actor) & is.na(flag_issue_actor)) ~ actor_grp,
@@ -346,7 +346,7 @@ subset_grooming <- function(babase, members_l) {
       TRUE ~ 992
     ))
 
-  grooming_interactions <- grooming_interactions %>%
+  grooming_l <- grooming_l %>%
     dplyr::mutate(actee_grp = dplyr::case_when(
       (is.na(flag_no_issue_actee) & is.na(flag_issue_actee) & actee_grp > 3) ~ actor_grp,
       (is.na(flag_no_issue_actee) & is.na(flag_issue_actee)) ~ actee_grp,
@@ -360,25 +360,25 @@ subset_grooming <- function(babase, members_l) {
       TRUE ~ 994
     ))
 
-  grooming_interactions <- grooming_interactions %>%
+  grooming_l <- grooming_l %>%
     dplyr::select(iid, sid, act, actor, actee, actor_sex, actee_sex, date, yearmon,
                   actor_grp, actee_grp)
 
   ## Restrict the grooming data to the same data restrictions of members
   grp_dates <- dplyr::distinct(members_l, grp, date)
 
-  temp1 <- grooming_interactions %>%
+  temp1 <- grooming_l %>%
     dplyr::inner_join(grp_dates, by = c("date", "actee_grp" = "grp"))
 
-  temp2 <- grooming_interactions %>%
+  temp2 <- grooming_l %>%
     dplyr::inner_join(grp_dates, by = c("date", "actor_grp" = "grp"))
 
-  grooming_interactions <- dplyr::bind_rows(temp1, temp2) %>%
+  grooming_l <- dplyr::bind_rows(temp1, temp2) %>%
     dplyr::distinct(iid, .keep_all = TRUE)
 
   # NOTE: Duplicated rows not removed in original code
 
-  return(grooming_interactions)
+  return(grooming_l)
 
 }
 
@@ -387,14 +387,14 @@ subset_grooming <- function(babase, members_l) {
 #'
 #' @param babase A DBI connection to the babase database
 #' @param members_l A subset of members table produced by the function 'subset_members'
-#' @param focalcount A subset of focals produced by the function 'subset_focals'
-#' @param grooming_interactions A subset of grooming data produced by the function 'subset_grooming'
+#' @param focals_l A subset of focals produced by the function 'subset_focals'
+#' @param grooming_l A subset of grooming data produced by the function 'subset_grooming'
 #'
 #' @return A tibble with one row per animal and year of life, with contextual data
 #' @export
 #'
 #' @examples
-make_iyol <- function(babase, members_l, focalcount, grooming_interactions) {
+make_iyol <- function(babase, members_l, focals_l, grooming_l) {
 
   if (class(babase) != "PostgreSQLConnection") {
     stop("Invalid connection to babase.")
@@ -418,8 +418,8 @@ make_iyol <- function(babase, members_l, focalcount, grooming_interactions) {
     dplyr::semi_join(dplyr::filter(biograph, sex == "M"), by = "sname")
 
   # Find last date
-  last_date <- min(max(members_l$date), max(focalcount$date),
-                   max(grooming_interactions$date))
+  last_date <- min(max(members_l$date), max(focals_l$date),
+                   max(grooming_l$date))
 
 
   # individ-year-of-life ----------------------------------------------------
@@ -525,16 +525,16 @@ make_iyol <- function(babase, members_l, focalcount, grooming_interactions) {
 #' @param my_iyol Individual-year-of-life data.
 #' @param biograph_l A local copy of the biograph table
 #' @param members_l A subset of members table produced by the function 'subset_members'
-#' @param focalcount A subset of focals produced by the function 'subset_focals'
-#' @param f_count A subset of female counts produced by the function 'subset_females'
-#' @param grooming_interactions A subset of grooming data produced by the function 'subset_grooming'
+#' @param focals_l A subset of focals produced by the function 'subset_focals'
+#' @param females_l A subset of female counts produced by the function 'subset_females'
+#' @param grooming_l A subset of grooming data produced by the function 'subset_grooming'
 #' @param min_cores_days The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.
 #'
 #' @return The input data with an additional list columsn containing the full DSI subset and the focal DSI variables.
 #' @export
 #'
 #' @examples
-dsi <- function(my_iyol, biograph_l, members_l, focalcount, f_count, grooming_interactions, min_cores_days = 60) {
+dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l, min_cores_days = 60) {
 
   # Return an empty tibble if the subset is empty
   if (is.null(my_iyol) |
@@ -549,8 +549,8 @@ dsi <- function(my_iyol, biograph_l, members_l, focalcount, f_count, grooming_in
   pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
   for (i in 1:nrow(my_iyol)) {
     my_iyol[i, ]$subset <- list(get_dyadic_subset(my_iyol[i, ], biograph_l,
-                                                  members_l, focalcount, f_count,
-                                                  grooming_interactions,
+                                                  members_l, focals_l, females_l,
+                                                  grooming_l,
                                                   min_cores_days))
     setTxtProgressBar(pb, i)
   }
@@ -568,15 +568,15 @@ dsi <- function(my_iyol, biograph_l, members_l, focalcount, f_count, grooming_in
 #' @param df One row individual-year-of-life data
 #' @param biograph_l A local copy of the biograph table
 #' @param members_l A subset of members table produced by the function 'subset_members'
-#' @param focalcount A subset of focals produced by the function 'subset_focals'
-#' @param f_count A subset of female counts produced by the function 'subset_females'
-#' @param grooming_interactions A subset of grooming data produced by the function 'subset_grooming'
+#' @param focals_l A subset of focals produced by the function 'subset_focals'
+#' @param females_l A subset of female counts produced by the function 'subset_females'
+#' @param grooming_l A subset of grooming data produced by the function 'subset_grooming'
 #' @param min_cores_days The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.
 #'
 #' @return The input row with an additional list column containing the subset
 #'
 #' @examples
-get_dyadic_subset <- function(df, biograph_l, members_l, focalcount, f_count, grooming_interactions, min_cores_days = 60) {
+get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l, grooming_l, min_cores_days = 60) {
 
   # Find and return all co-residence dates for focal_sname and partner_sname in my_members
   get_overlap_dates <- function(focal_sname, partner_sname) {
@@ -627,9 +627,9 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focalcount, f_count, gr
 
   # Put some subsets in environment for faster performance
   my_members <- dplyr::filter(members_l, grp == my_grp & date >= my_start & date <= my_end)
-  my_focals <- dplyr::filter(focalcount, grp == my_grp & date >= my_start & date <= my_end)
-  my_females <- dplyr::filter(f_count, grp == my_grp & date >= my_start & date <= my_end)
-  my_grooming <- grooming_interactions %>%
+  my_focals <- dplyr::filter(focals_l, grp == my_grp & date >= my_start & date <= my_end)
+  my_females <- dplyr::filter(females_l, grp == my_grp & date >= my_start & date <= my_end)
+  my_grooming <- grooming_l %>%
     dplyr::filter((actor_grp == my_grp | actee_grp == my_grp) & date >= my_start & date <= my_end)
 
   # Find all distinct members between start and end dates
@@ -720,7 +720,8 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focalcount, f_count, gr
     dplyr::mutate(g_adj = g_total / coresidence_days,
                   log2_g_adj = log2(g_adj))
 
-  # There will by lots of zeros in most subsets
+
+  # There will be lots of zeros in most subsets
   # If present, remove these before fitting regression model
   zero_subset <- dplyr::filter(my_subset, g_adj == 0)
 
@@ -933,15 +934,15 @@ get_groom_dates <- function(my_sub, members_l, df, my_sex_var, my_role, my_sex) 
 #'
 #' @param df One row individual-year-of-life data
 #' @param members_l A subset of members table produced by the function 'subset_members'
-#' @param focalcount A subset of focals produced by the function 'subset_focals'
-#' @param f_count A subset of female counts produced by the function 'subset_females'
-#' @param grooming_interactions A subset of grooming data produced by the function 'subset_grooming'
+#' @param focals_l A subset of focals produced by the function 'subset_focals'
+#' @param females_l A subset of female counts produced by the function 'subset_females'
+#' @param grooming_l A subset of grooming data produced by the function 'subset_grooming'
 #' @param min_res_days The minimum number of residence days needed to be included. Defaults to 60 days.
 #'
 #' @return The input row with an additional list column containing the subset
 #'
 #' @examples
-get_sci_subset <- function(df, members_l, focalcount, f_count, grooming_interactions, min_res_days = 60) {
+get_sci_subset <- function(df, members_l, focals_l, females_l, grooming_l, min_res_days = 60) {
 
   zero_daily_count <- 1/365.25
   log_zero_daily_count <- log2(zero_daily_count)
@@ -956,34 +957,34 @@ get_sci_subset <- function(df, members_l, focalcount, f_count, grooming_interact
 
   ## Focal counts
   # Get all focals during relevant time period in grp
-  my_focals <- get_mem_dates(my_subset, members_l, focalcount, sel = quo(sum)) %>%
+  my_focals <- get_mem_dates(my_subset, members_l, focals_l, sel = quo(sum)) %>%
     dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(focalcount = sum(sum))
+    dplyr::summarise(n_focals = sum(sum))
 
   ## Female counts
-  my_females <- get_mem_dates(my_subset, members_l, f_count, sel = quo(nr_females)) %>%
+  my_females <- get_mem_dates(my_subset, members_l, females_l, sel = quo(nr_females)) %>%
     dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(mean_F_count = mean(nr_females))
+    dplyr::summarise(mean_f_count = mean(nr_females))
 
-  # Join back to my_subset to add focalcount column
+  # Join back to my_subset to add n_focals column
   my_subset <- my_subset %>%
     dplyr::left_join(my_focals, by = c("grp", "sname")) %>%
     dplyr::left_join(my_females, by = c("grp", "sname"))
 
   # Filter and calculate variables
   my_subset <- my_subset %>%
-    dplyr::filter(days_present >= min_res_days & mean_F_count > 0) %>%
-    dplyr::mutate(OE = (focalcount / mean_F_count) / days_present,
+    dplyr::filter(days_present >= min_res_days & mean_f_count > 0) %>%
+    dplyr::mutate(OE = (n_focals / mean_f_count) / days_present,
                   log2OE = log2(OE)) %>%
     dplyr::filter(!is.na(OE))
 
   ## Grooming given to females
-  gg_f <- get_groom_dates(my_subset, members_l, grooming_interactions, quo(actee_sex), "actor", "F") %>%
+  gg_f <- get_groom_dates(my_subset, members_l, grooming_l, quo(actee_sex), "actor", "F") %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(GtoF = n())
 
   ## Grooming received from females
-  gr_f <- get_groom_dates(my_subset, members_l, grooming_interactions, quo(actor_sex), "actee", "F") %>%
+  gr_f <- get_groom_dates(my_subset, members_l, grooming_l, quo(actor_sex), "actee", "F") %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(GfromF = n())
 
@@ -1013,12 +1014,12 @@ get_sci_subset <- function(df, members_l, focalcount, f_count, grooming_interact
   if (df$sex == "F") {
 
     ## Grooming given to males
-    gg_m <- get_groom_dates(my_subset, members_l, grooming_interactions, quo(actee_sex), "actor", "M") %>%
+    gg_m <- get_groom_dates(my_subset, members_l, grooming_l, quo(actee_sex), "actor", "M") %>%
       dplyr::group_by(grp, sname) %>%
       dplyr::summarise(GtoM = n())
 
     ## Grooming received from males
-    gr_m <- get_groom_dates(my_subset, members_l, grooming_interactions, quo(actor_sex), "actee", "M") %>%
+    gr_m <- get_groom_dates(my_subset, members_l, grooming_l, quo(actor_sex), "actee", "M") %>%
       dplyr::group_by(grp, sname) %>%
       dplyr::summarise(GfromM = n())
 
@@ -1052,16 +1053,16 @@ get_sci_subset <- function(df, members_l, focalcount, f_count, grooming_interact
 #'
 #' @param my_iyol Individual-year-of-life data.
 #' @param members_l A subset of members table produced by the function 'subset_members'
-#' @param focalcount A subset of focals produced by the function 'subset_focals'
-#' @param f_count A subset of female counts produced by the function 'subset_females'
-#' @param grooming_interactions A subset of grooming data produced by the function 'subset_grooming'
+#' @param focals_l A subset of focals produced by the function 'subset_focals'
+#' @param females_l A subset of female counts produced by the function 'subset_females'
+#' @param grooming_l A subset of grooming data produced by the function 'subset_grooming'
 #' @param min_res_days The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.
 #'
 #' @return The input data with an additional list columsn containing the full SCI subset and variables.
 #' @export
 #'
 #' @examples
-sci <- function(my_iyol, members_l, focalcount, f_count, grooming_interactions, min_res_days = 60) {
+sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l, min_res_days = 60) {
 
   # Return an empty tibble if the subset is empty
   if (is.null(my_iyol) |
@@ -1076,8 +1077,8 @@ sci <- function(my_iyol, members_l, focalcount, f_count, grooming_interactions, 
   pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
   for (i in 1:nrow(my_iyol)) {
     my_iyol[i, ]$subset <- list(get_sci_subset(my_iyol[i, ], members_l,
-                                               focalcount, f_count,
-                                               grooming_interactions,
+                                               focals_l, females_l,
+                                               grooming_l,
                                                min_res_days))
     setTxtProgressBar(pb, i)
   }
