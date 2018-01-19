@@ -572,20 +572,22 @@ dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
 #' @param females_l A subset of female counts produced by the function 'subset_females'
 #' @param grooming_l A subset of grooming data produced by the function 'subset_grooming'
 #' @param min_cores_days The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.
+#' @param within_grp Logical value indicating whether regressions should be fit for dyads within-group (default) or for entire population
 #'
 #' @return The input row with an additional list column containing the subset
 #'
 #' @examples
-get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l, grooming_l, min_cores_days = 60) {
+get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
+                              grooming_l, min_cores_days = 60, within_grp = TRUE) {
 
   # Find and return all co-residence dates for focal_sname and partner_sname in my_members
-  get_overlap_dates <- function(focal_sname, partner_sname) {
+  get_overlap_dates <- function(focal_sname, partner_sname, focal_grp, partner_grp) {
 
     focal_dates <- my_members %>%
-      dplyr::filter(sname == focal_sname)
+      dplyr::filter(sname == focal_sname & grp == focal_grp)
 
     partner_dates <- my_members %>%
-      dplyr::filter(sname == partner_sname)
+      dplyr::filter(sname == partner_sname & grp == partner_grp)
 
     overlap_dates <- as.Date(dplyr::intersect(focal_dates$date, partner_dates$date),
                              origin = "1970-01-01")
@@ -594,28 +596,28 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l, gr
   }
 
   # Return total count of focals during co-residence dates
-  get_focal_counts <- function(coresidence_dates) {
+  get_focal_counts <- function(coresidence_dates, focal_grp) {
 
     res <- my_focals %>%
-      dplyr::filter(date %in% coresidence_dates)
+      dplyr::filter(date %in% coresidence_dates & grp == focal_grp)
 
     return(sum(res$sum))
   }
 
   # Return average number of females present in grp during co-residence dates
-  get_female_counts <- function(coresidence_dates) {
+  get_female_counts <- function(coresidence_dates, focal_grp) {
 
     res <- my_females %>%
-      dplyr::filter(date %in% coresidence_dates)
+      dplyr::filter(date %in% coresidence_dates & grp == focal_grp)
 
     return(mean(res$nr_females))
   }
 
   # Return grooming by actor to actee during co-residence dates
-  get_grooming <- function(my_actor, my_actee) {
+  get_grooming <- function(my_actor, my_actee, focal_grp, partner_grp) {
 
     res <- my_grooming %>%
-      dplyr::filter(actor == my_actor & actee == my_actee)
+      dplyr::filter(actor == my_actor & actor_grp == focal_grp & actee == my_actee & actee_grp == partner_grp)
 
     return(nrow(res))
   }
@@ -626,39 +628,65 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l, gr
   my_end <- df$end
 
   # Put some subsets in environment for faster performance
-  my_members <- dplyr::filter(members_l, grp == my_grp & date >= my_start & date <= my_end)
-  my_focals <- dplyr::filter(focals_l, grp == my_grp & date >= my_start & date <= my_end)
-  my_females <- dplyr::filter(females_l, grp == my_grp & date >= my_start & date <= my_end)
-  my_grooming <- grooming_l %>%
-    dplyr::filter((actor_grp == my_grp | actee_grp == my_grp) & date >= my_start & date <= my_end)
+  if (within_grp) {
+    my_members <- dplyr::filter(members_l, grp == my_grp & date >= my_start & date <= my_end)
+    my_focals <- dplyr::filter(focals_l, grp == my_grp & date >= my_start & date <= my_end)
+    my_females <- dplyr::filter(females_l, grp == my_grp & date >= my_start & date <= my_end)
+    my_grooming <- grooming_l %>%
+      dplyr::filter((actor_grp == my_grp | actee_grp == my_grp) & date >= my_start & date <= my_end)
 
-  # Find all distinct members between start and end dates
-  # For each animal in each group durign this time, calculate:
-  # number of days present, first date, last date
-  my_subset <- my_members %>%
-    dplyr::rename(sname_sex = sex) %>%
-    dplyr::inner_join(select(df, -sname, -sex), by = c("grp")) %>%
-    dplyr::group_by(sname, grp, sname_sex) %>%
-    dplyr::summarise(days_present = n(),
-                     start = min(date),
-                     end = max(date))
+    # Find all distinct members WITHIN GROUP between start and end dates
+    # For each animal in each group durign this time, calculate:
+    # number of days present, first date, last date
+    my_subset <- my_members %>%
+      dplyr::rename(sname_sex = sex) %>%
+      dplyr::inner_join(select(df, -sname, -sex), by = c("grp")) %>%
+      dplyr::group_by(sname, grp, sname_sex) %>%
+      dplyr::summarise(days_present = n(),
+                       start = min(date),
+                       end = max(date))
+  }
+  else {
+    my_members <- dplyr::filter(members_l, date >= my_start & date <= my_end)
+    my_focals <- dplyr::filter(focals_l, date >= my_start & date <= my_end)
+    my_females <- dplyr::filter(females_l, date >= my_start & date <= my_end)
+    my_grooming <- grooming_l %>%
+      dplyr::filter(date >= my_start & date <= my_end)
+
+    # Find all distinct members IN POPULATION between start and end dates
+    # For each animal in each group durign this time, calculate:
+    # number of days present, first date, last date
+    my_subset <- my_members %>%
+      dplyr::rename(sname_sex = sex) %>%
+      dplyr::group_by(sname, grp, sname_sex) %>%
+      dplyr::summarise(days_present = n(),
+                       start = min(date),
+                       end = max(date))
+  }
 
   # For each of these records, find all possible dyad partners
   # Store as new list column and unnest to expand
-  my_subset <- my_subset %>%
+  dyads <- my_subset %>%
     dplyr::mutate(partner = list(my_subset$sname[my_subset$sname != sname])) %>%
     tidyr::unnest()
 
+  # Get sex and grp of partner
+  # Remove dyads not in same groups
+  dyads <- dyads %>%
+    inner_join(select(my_subset, partner = sname, partner_sex = sname_sex,
+                      partner_grp = grp), by = "partner") %>%
+    filter(grp == partner_grp)
+
   # Get sex of partner in new column by joining to biograph on partner
-  my_subset <- my_subset %>%
-    dplyr::left_join(select(biograph_l, partner = sname, partner_sex = sex),
-                     by = "partner")
+  # my_subset <- my_subset %>%
+  #   dplyr::left_join(select(biograph_l, partner = sname, partner_sex = sex),
+  #                    by = "partner")
 
   # Note that the step above created duplicated dyads
   # e.g., sname A and partner B, sname B and partner A
   # If DSI is symmetric, these can be removed
   # That's true here, so remove duplicate dyads
-  my_subset <- my_subset %>%
+  my_subset <- dyads %>%
     dplyr::rowwise() %>%
     dplyr::mutate(tmp = paste(sort(c(sname, partner)), collapse = '')) %>%
     dplyr::distinct(tmp, .keep_all = TRUE) %>%
@@ -673,7 +701,7 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l, gr
   # Find all dates during which focal and partner co-resided in my_grp
   # Get a count of these dates
   my_subset <- my_subset %>%
-    dplyr::mutate(coresidence_dates = purrr::pmap(list(sname, partner),
+    dplyr::mutate(coresidence_dates = purrr::pmap(list(sname, partner, grp, partner_grp),
                                                   get_overlap_dates)) %>%
     dplyr::rowwise() %>%
     dplyr::mutate(coresidence_days = length(coresidence_dates)) %>%
@@ -682,12 +710,12 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l, gr
   ## Focal counts
   # Get total count of focals during each dyad's co-residence dates
   my_subset <- my_subset %>%
-    dplyr::mutate(n_focals = purrr::map_dbl(coresidence_dates, get_focal_counts))
+    dplyr::mutate(n_focals = purrr::pmap_dbl(list(coresidence_dates, grp), get_focal_counts))
 
   ## Female counts
   # Get average number of females in group during the dyad's co-residence dates
   my_subset <- my_subset %>%
-    dplyr::mutate(n_females = purrr::map_dbl(coresidence_dates, get_female_counts))
+    dplyr::mutate(n_females = purrr::pmap_dbl(list(coresidence_dates, grp), get_female_counts))
 
   # Filter and calculate variables
   my_subset <- my_subset %>%
@@ -709,9 +737,9 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l, gr
   # g_given is grooming given by sname to partner
   # g_received is grooming received by sname from partner
   my_subset <- my_subset %>%
-    dplyr::mutate(g_given = purrr::pmap_dbl(list(sname, partner),
+    dplyr::mutate(g_given = purrr::pmap_dbl(list(sname, partner, grp, partner_grp),
                                             get_grooming),
-                  g_received = purrr::pmap_dbl(list(partner, sname),
+                  g_received = purrr::pmap_dbl(list(partner, sname, partner_grp, grp),
                                                get_grooming),
                   g_total = g_given + g_received)
 
