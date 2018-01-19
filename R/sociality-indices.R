@@ -529,12 +529,14 @@ make_iyol <- function(babase, members_l, focals_l, grooming_l) {
 #' @param females_l A subset of female counts produced by the function 'subset_females'
 #' @param grooming_l A subset of grooming data produced by the function 'subset_grooming'
 #' @param min_cores_days The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.
+#' @param within_grp Logical value indicating whether regressions should be fit for dyads within-group (default) or for entire population
 #'
 #' @return The input data with an additional list columsn containing the full DSI subset and the focal DSI variables.
 #' @export
 #'
 #' @examples
-dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l, min_cores_days = 60) {
+dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
+                min_cores_days = 60, within_grp = TRUE) {
 
   # Return an empty tibble if the subset is empty
   if (is.null(my_iyol) |
@@ -550,8 +552,8 @@ dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
   for (i in 1:nrow(my_iyol)) {
     my_iyol[i, ]$subset <- list(get_dyadic_subset(my_iyol[i, ], biograph_l,
                                                   members_l, focals_l, females_l,
-                                                  grooming_l,
-                                                  min_cores_days))
+                                                  grooming_l, min_cores_days,
+                                                  within_grp))
     setTxtProgressBar(pb, i)
   }
   close(pb)
