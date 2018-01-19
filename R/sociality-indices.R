@@ -798,7 +798,7 @@ fit_dsi_regression <- function(df) {
     df <- dplyr::bind_rows(zero_subset, nonzero_subset)
   }
   else {
-    df$res_g_adj <- as.numeric(residuals(lm(data = my_subset, log2_g_adj ~ log2OE)))
+    df$res_g_adj <- as.numeric(residuals(lm(data = df, log2_g_adj ~ log2OE)))
   }
 
   return(df)
