@@ -767,7 +767,7 @@ get_focal_dsi <- function(my_sname, my_subset) {
 
   # Create new columns that have a unique dyad string
   # and dyad type: F-F, F-M, or M-M
-  dsi <- my_subset %>%
+  focal_dsi <- my_subset %>%
     dplyr::rowwise() %>%
     dplyr::mutate(dyad = paste(sort(c(sname, partner)), collapse = '-'),
                   dyad_type = paste(sort(c(sname_sex, partner_sex)), collapse = '-')) %>%
@@ -785,7 +785,7 @@ get_focal_dsi <- function(my_sname, my_subset) {
   # Categorize as bonded, strongly bonded, or neither
   # Also calculate the bond-strength percentile from the
   # empirical cummulative distribution function
-  dsi <- dsi %>%
+  focal_dsi <- focal_dsi %>%
     dplyr::filter(sname == my_sname | partner == my_sname) %>%
     dplyr::mutate(bond_strength = dplyr::case_when(
       res_g_adj >= -9999999 & res_g_adj >= perc_90 ~ "StronglyBonded",
@@ -794,7 +794,7 @@ get_focal_dsi <- function(my_sname, my_subset) {
       bond_perc = ecdf(my_subset$res_g_adj)(.$res_g_adj)
     )
 
-  return(dsi)
+  return(focal_dsi)
 }
 
 #' Create summary data from DSI input
