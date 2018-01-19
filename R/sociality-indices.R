@@ -720,33 +720,61 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l, gr
     dplyr::mutate(g_adj = g_total / coresidence_days,
                   log2_g_adj = log2(g_adj))
 
+  # Classify dyads by dyad type ("F-F" or "F-M"), and nest by dyad type
+  my_subset <- my_subset %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(dyad = paste(sort(c(sname, partner)), collapse = '-'),
+                  dyad_type = paste(sort(c(sname_sex, partner_sex)), collapse = '-')) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(dyad_type != "M-M") %>%
+    dplyr::group_by(dyad_type) %>%
+    tidyr::nest()
+
+  # Fit regression separately for the two dyad types and get residuals
+  my_subset <- my_subset %>%
+    dplyr::mutate(data = purrr::map(data, fit_dsi_regression)) %>%
+    tidyr::unnest()
+
+  # Reorganize columns
+  my_subset <- my_subset %>%
+    dplyr::select(-coresidence_dates) %>%
+    dplyr::select(sname, sname_sex, partner, partner_sex, everything()) %>%
+    dplyr::arrange(sname, partner)
+
+  return(my_subset)
+}
+
+#' Fit DSI regression on subset of data
+#'
+#' @param df A subset of data on which to fit a regression of grooming on observer effort.
+#'
+#' @return The input data with an additional column containing the regression residuals.
+#'
+#' @examples
+fit_dsi_regression <- function(df) {
 
   # There will be lots of zeros in most subsets
   # If present, remove these before fitting regression model
-  zero_subset <- dplyr::filter(my_subset, g_adj == 0)
+  zero_subset <- dplyr::filter(df, g_adj == 0)
 
   if (nrow(zero_subset) > 0) {
 
     # Fit regression to non-zero values
-    nonzero_subset <- dplyr::filter(my_subset, g_adj != 0)
+    nonzero_subset <- dplyr::filter(df, g_adj != 0)
     nonzero_subset$res_g_adj <- as.numeric(residuals(lm(data = nonzero_subset, log2_g_adj ~ log2OE)))
 
     # Assign a value of -Inf for the residuals of zero values (for calculating quantiles)
     zero_subset$res_g_adj <- -Inf
 
     # Combine with zero and non-zero subsets
-    my_subset <- dplyr::bind_rows(zero_subset, nonzero_subset)
+    df <- dplyr::bind_rows(zero_subset, nonzero_subset)
   }
   else {
-    my_subset$res_g_adj <- as.numeric(residuals(lm(data = my_subset, log2_g_adj ~ log2OE)))
+    df$res_g_adj <- as.numeric(residuals(lm(data = my_subset, log2_g_adj ~ log2OE)))
   }
 
-  my_subset <- my_subset %>%
-    dplyr::select(-coresidence_dates) %>%
-    dplyr::select(sname, partner, everything()) %>%
-    dplyr::arrange(sname, partner)
+  return(df)
 
-  return(my_subset)
 }
 
 
@@ -765,37 +793,32 @@ get_focal_dsi <- function(my_sname, my_subset) {
     return(dplyr::tbl_df(NULL))
   }
 
-  # Create new columns that have a unique dyad string
-  # and dyad type: F-F, F-M, or M-M
-  focal_dsi <- my_subset %>%
-    dplyr::rowwise() %>%
-    dplyr::mutate(dyad = paste(sort(c(sname, partner)), collapse = '-'),
-                  dyad_type = paste(sort(c(sname_sex, partner_sex)), collapse = '-')) %>%
-    dplyr::ungroup() %>%
-    filter(dyad_type != "M-M")
-
   # Calculate 50 and 90 percentiles from full set of residuals
-  # This represents all dyads present in the group during the year
+  # This represents all dyads of a given type in the group during the year
   # Including the "zero-grooming" values set to -Inf
-  perc_50 <- quantile(dsi$res_g_adj, probs = 0.5)
-  perc_90 <- quantile(dsi$res_g_adj, probs = 0.9)
+  percs <- my_subset %>%
+    dplyr::group_by(dyad_type) %>%
+    dplyr::summarise(perc_50 = quantile(res_g_adj, probs = 0.5),
+                     perc_90 = quantile(res_g_adj, probs = 0.9))
 
-  # The DSI subset should contain only dyads that include my_sname
+  # Add percentile columns to my_subset
+  my_subset <- dplyr::inner_join(my_subset, percs, by = "dyad_type")
+
+  # The focal DSI subset should contain only dyads that include my_sname
   # This can be in either the sname or partner column
   # Categorize as bonded, strongly bonded, or neither
   # Also calculate the bond-strength percentile from the
   # empirical cummulative distribution function
-  focal_dsi <- focal_dsi %>%
+  focal_dsi <- my_subset %>%
     dplyr::filter(sname == my_sname | partner == my_sname) %>%
     dplyr::mutate(bond_strength = dplyr::case_when(
       res_g_adj >= -9999999 & res_g_adj >= perc_90 ~ "StronglyBonded",
       res_g_adj >= -9999999 & res_g_adj >= perc_50 ~ "Bonded",
-      TRUE ~ "Neither"),
-      bond_perc = ecdf(my_subset$res_g_adj)(.$res_g_adj)
-    )
+      TRUE ~ "Neither"))
 
   return(focal_dsi)
 }
+
 
 #' Create summary data from DSI input
 #'
