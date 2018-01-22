@@ -1137,5 +1137,13 @@ sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l, min_res_day
   }
   close(pb)
 
-  return(my_iyol)
+  sci_focal <- my_iyol %>%
+    unnest() %>%
+    mutate(focal = (sname == sname1 & grp == grp1)) %>%
+    filter(focal) %>%
+    select(sname, grp, start, end, SCI_M, SCI_F)
+
+  res <- left_join(my_iyol, sci_focal, by = c("sname", "grp", "start", "end"))
+
+  return(res)
 }
