@@ -37,7 +37,7 @@ iyol <- make_iyol(babase, members_l, focals_l, grooming_l)
 
 # Example of how to save / reload a data set
 # saveRDS(iyol, "data/iyol_2018-01-19.RDS")
-# iyol <- readRDS("data/iyol_2018-01-10.RDS")
+# iyol <- readRDS("data/iyol_2018-01-19.RDS")
 
 
 # calculate-dsi -----------------------------------------------------------
@@ -54,12 +54,13 @@ dsi <- dsi(iyol_dsi, biograph_l, members_l, focals_l, females_l, grooming_l,
 # Calculate population-level DSI subset for each row of data
 # Warning: takes ~29 hours!!!!
 dsi_pop <- dsi(iyol_dsi, biograph_l, members_l, focals_l, females_l, grooming_l,
-           min_cores_days = 60, within_grp = FALSE)
+               min_cores_days = 60, within_grp = FALSE)
 
 # Example of how to save / reload a data set
 # saveRDS(dsi, "data/dsi_2018-01-19.RDS")
 # saveRDS(dsi_pop, "data/dsi-pop_2018-01-19.RDS")
-# dsi <- readRDS("data/dsi_2018-01-10.RDS")
+# dsi <- readRDS("data/dsi_2018-01-19.RDS")
+# dsi_pop <- readRDS("data/dsi-pop_2018-01-19.RDS")
 
 # Summarize DSI variables for top partners in each year of life
 # Takes about 3 or 4 minutes
@@ -70,6 +71,7 @@ dsi_pop_summary <- dsi_summary(dsi_pop)
 # saveRDS(dsi_summary, "data/dsi_summary_2018-01-19.RDS")
 # saveRDS(dsi_pop_summary, "data/dsi-pop_summary_2018-01-19.RDS")
 # dsi_summary <- readRDS("data/dsi_summary_2018-01-19.RDS")
+# dsi_pop_summary <- readRDS("data/dsi-pop_summary_2018-01-19.RDS")
 
 
 # calculate-sci -----------------------------------------------------------
@@ -83,4 +85,4 @@ sci <- sci(iyol_sci, members_l, focals_l, females_l, grooming_l, min_res_days = 
 
 # Example of how to save / reload a data set
 # saveRDS(sci, "data/sci_2018-01-19.RDS")
-# sci <- readRDS("data/sci_2018-01-10.RDS")
+# sci <- readRDS("data/sci_2018-01-19.RDS")
