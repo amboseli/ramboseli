@@ -819,7 +819,7 @@ fit_dsi_regression <- function(df) {
 get_focal_dsi <- function(my_sname, my_subset) {
 
   # Return an empty tibble if the subset is empty
-  if (is.null(my_subset)) {
+  if (nrow(my_subset) == 0) {
     return(dplyr::tbl_df(NULL))
   }
 
