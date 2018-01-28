@@ -819,7 +819,7 @@ fit_dsi_regression <- function(df) {
 get_focal_dsi <- function(my_sname, my_subset) {
 
   # Return an empty tibble if the subset is empty
-  if (is.null(my_subset)) {
+  if (nrow(my_subset) == 0) {
     return(dplyr::tbl_df(NULL))
   }
 
@@ -880,7 +880,57 @@ dsi_summary <- function(df) {
     dplyr::select(-subset, -dsi) %>%
     tidyr::unnest()
 
-  return(df)
+  dsi_strength <- df %>%
+    select(-top_partners, -r_quantity, -r_reciprocity) %>%
+    unnest() %>%
+    select(-n)
+
+  dsi_strength <- dsi_strength %>%
+    mutate(DSI_type = case_when(
+      sex == "M" & dyad_type == "F-M" ~ "DSI_F",
+      sex == "F" & dyad_type == "F-M" ~ "DSI_M",
+      sex == "F" & dyad_type == "F-F" ~ "DSI_F"),
+      sex = fct_recode(sex, Male = "M", Female = "F")) %>%
+    select(-dyad_type) %>%
+    spread(DSI_type, r_strength) %>%
+    select(sname, grp, start, end, DSI_F, DSI_M)
+
+  dsi_quantity <- df %>%
+    select(-top_partners, -r_strength, -r_reciprocity) %>%
+    unnest() %>%
+    mutate(DSI_type = case_when(
+      sex == "M" & dyad_type == "F-M" ~ "F",
+      sex == "F" & dyad_type == "F-M" ~ "M",
+      sex == "F" & dyad_type == "F-F" ~ "F"),
+      sex = fct_recode(sex, Male = "M", Female = "F")) %>%
+    select(-dyad_type) %>%
+    gather(bond_cat, n_bonds, Neither, Bonded, StronglyBonded) %>%
+    unite(var, bond_cat, DSI_type) %>%
+    spread(var, n_bonds, fill = 0) %>%
+    select(sname, grp, start, end, ends_with("_M"), ends_with("_F"))
+
+  dsi_recip <- df %>%
+    select(-top_partners, -r_quantity, -r_strength) %>%
+    unnest() %>%
+    select(-n)
+
+  dsi_recip <- dsi_recip %>%
+    mutate(DSI_type = case_when(
+      sex == "M" & dyad_type == "F-M" ~ "recip_F",
+      sex == "F" & dyad_type == "F-M" ~ "recip_M",
+      sex == "F" & dyad_type == "F-F" ~ "recip_F"),
+      sex = fct_recode(sex, Male = "M", Female = "F")) %>%
+    select(-dyad_type) %>%
+    spread(DSI_type, r_reciprocity) %>%
+    select(sname, grp, start, end, recip_F, recip_M)
+
+  dsi_summary <- df %>%
+    select(-top_partners, -starts_with("r_")) %>%
+    left_join(dsi_strength, by = c("sname", "grp", "start", "end")) %>%
+    left_join(dsi_quantity, by = c("sname", "grp", "start", "end")) %>%
+    left_join(dsi_recip, by = c("sname", "grp", "start", "end"))
+
+  return(dsi_summary)
 }
 
 
