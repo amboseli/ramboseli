@@ -828,23 +828,25 @@ get_focal_dsi <- function(my_sname, my_subset) {
   # Including the "zero-grooming" values set to -Inf
   percs <- my_subset %>%
     dplyr::group_by(dyad_type) %>%
+    dplyr::filter(g_total > 0) %>%
     dplyr::summarise(perc_50 = quantile(res_g_adj, probs = 0.5),
                      perc_90 = quantile(res_g_adj, probs = 0.9))
 
   # Add percentile columns to my_subset
-  my_subset <- dplyr::inner_join(my_subset, percs, by = "dyad_type")
+  my_subset <- dplyr::left_join(my_subset, percs, by = "dyad_type")
 
   # The focal DSI subset should contain only dyads that include my_sname
   # This can be in either the sname or partner column
-  # Categorize as bonded, strongly bonded, or neither
+  # Categorize as very strongly bonded, strongly bonded, weakly bonded, or not bonded
   # Also calculate the bond-strength percentile from the
   # empirical cummulative distribution function
   focal_dsi <- my_subset %>%
     dplyr::filter(sname == my_sname | partner == my_sname) %>%
     dplyr::mutate(bond_strength = dplyr::case_when(
-      res_g_adj >= -9999999 & res_g_adj >= perc_90 ~ "StronglyBonded",
-      res_g_adj >= -9999999 & res_g_adj >= perc_50 ~ "Bonded",
-      TRUE ~ "Neither"))
+      res_g_adj >= perc_90 ~ "VeryStronglyBonded",
+      res_g_adj >= perc_50 ~ "StronglyBonded",
+      res_g_adj >= -9999999 ~ "WeaklyBonded",
+      TRUE ~ "NotBonded"))
 
   return(focal_dsi)
 }
@@ -904,7 +906,7 @@ dsi_summary <- function(df) {
       sex == "F" & dyad_type == "F-F" ~ "F"),
       sex = fct_recode(sex, Male = "M", Female = "F")) %>%
     select(-dyad_type) %>%
-    gather(bond_cat, n_bonds, Neither, Bonded, StronglyBonded) %>%
+    gather(bond_cat, n_bonds, NotBonded, WeaklyBonded, StronglyBonded, VeryStronglyBonded) %>%
     unite(var, bond_cat, DSI_type) %>%
     spread(var, n_bonds, fill = 0) %>%
     select(sname, grp, start, end, ends_with("_M"), ends_with("_F"))
