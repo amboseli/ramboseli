@@ -586,13 +586,14 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
   get_overlap_dates <- function(focal_sname, partner_sname, focal_grp, partner_grp) {
 
     focal_dates <- my_members %>%
-      dplyr::filter(sname == focal_sname & grp == focal_grp)
+      dplyr::filter(sname == focal_sname & grp == focal_grp) %>%
+      pull(date)
 
     partner_dates <- my_members %>%
-      dplyr::filter(sname == partner_sname & grp == partner_grp)
+      dplyr::filter(sname == partner_sname & grp == partner_grp) %>%
+      pull(date)
 
-    overlap_dates <- as.Date(dplyr::intersect(focal_dates$date, partner_dates$date),
-                             origin = "1970-01-01")
+    overlap_dates <- dplyr::intersect(focal_dates, partner_dates)
 
     return(overlap_dates)
   }
@@ -679,18 +680,13 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
                       partner_grp = grp), by = "partner") %>%
     filter(grp == partner_grp)
 
-  # Get sex of partner in new column by joining to biograph on partner
-  # my_subset <- my_subset %>%
-  #   dplyr::left_join(select(biograph_l, partner = sname, partner_sex = sex),
-  #                    by = "partner")
-
   # Note that the step above created duplicated dyads
   # e.g., sname A and partner B, sname B and partner A
   # If DSI is symmetric, these can be removed
   # That's true here, so remove duplicate dyads
   my_subset <- dyads %>%
     dplyr::rowwise() %>%
-    dplyr::mutate(tmp = paste(sort(c(sname, partner)), collapse = '')) %>%
+    dplyr::mutate(tmp = paste(grp, sort(c(sname, partner)), collapse = '')) %>%
     dplyr::distinct(tmp, .keep_all = TRUE) %>%
     dplyr::select(-tmp) %>%
     dplyr::ungroup()
