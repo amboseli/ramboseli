@@ -1194,7 +1194,7 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, grooming_l, min_r
 #' @export
 #'
 #' @examples
-sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l, min_res_days = 60) {
+sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l, min_res_days = 60, parallel = FALSE) {
 
   ptm <- proc.time()
 
@@ -1207,16 +1207,34 @@ sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l, min_res_day
     stop("Problem with input data. Use the 'make_iyol' function to create the input.")
   }
 
-  my_iyol$subset <- list(NULL)
-  pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
-  for (i in 1:nrow(my_iyol)) {
-    my_iyol[i, ]$subset <- list(get_sci_subset(my_iyol[i, ], members_l,
-                                               focals_l, females_l,
-                                               grooming_l,
-                                               min_res_days))
-    setTxtProgressBar(pb, i)
+  if (parallel) {
+    cores <- detectCores()
+    cl <- makeCluster(cores[1])
+    registerDoSNOW(cl)
+    pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3)
+    progress <- function(n) setTxtProgressBar(pb, n)
+    opts <- list(progress = progress)
+    subset <- foreach(i = 1:nrow(my_iyol), .options.snow = opts,
+                      .packages = c('tidyverse')) %dopar% {
+                        get_sci_subset(my_iyol[i, ], members_l, focals_l,
+                                       females_l, grooming_l, min_res_days)
+                      }
+    close(pb)
+    stopCluster(cl)
+    my_iyol <- add_column(my_iyol, subset)
   }
-  close(pb)
+  else {
+    my_iyol$subset <- list(NULL)
+    pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
+    for (i in 1:nrow(my_iyol)) {
+      my_iyol[i, ]$subset <- list(get_sci_subset(my_iyol[i, ], members_l,
+                                                 focals_l, females_l,
+                                                 grooming_l,
+                                                 min_res_days))
+      setTxtProgressBar(pb, i)
+      close(pb)
+    }
+  }
 
   sci_focal <- my_iyol %>%
     unnest() %>%

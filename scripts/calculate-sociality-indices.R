@@ -93,7 +93,8 @@ iyol_sci <- iyol %>%
 
 # Calculate SCI subset for each row of data
 # Warning: takes ~50 minutes!!!!
-sci <- sci(iyol_sci, members_l, focals_l, females_l, grooming_l, min_res_days = 60)
+sci <- sci(iyol_sci, members_l, focals_l, females_l, grooming_l,
+           min_res_days = 60, parallel = TRUE)
 
 # Example of how to save / reload a data set
 saveRDS(sci, "data/sci_2018-02-02.RDS")
