@@ -1,6 +1,14 @@
 
 # setup -------------------------------------------------------------------
 
+# Install devtools if not already present
+if (!("devtools" %in% installed.packages()[,"Package"]))
+  install.packages("devtools")
+
+# Install newest version of ramboseli if not already installed
+if (!("ramboseli" %in% installed.packages()[,"Package"]))
+  devtools::install_github("amboseli/ramboseli")
+
 Sys.setenv(TZ = 'UTC')
 list.of.packages <- list("foreach", "doSNOW", "parallel", "tidyverse",
                          "lubridate", "dbplyr", "purrrlyr", "RPostgreSQL",
@@ -54,9 +62,8 @@ iyol_dsi <- iyol %>%
 
 # Calculate population-level DSI subset for each row of data
 # Warning: takes up to 30 hours!!!!
-# Faster if run using parallel computation; speed will depend on # of cores
-#
-# The option for parallel processing seems finicky and might not work on your computer.
+# Faster if run using parallel computation, but speed will depend on number of cores
+# The option for parallel processing seems finicky and might not work on your computer
 # If you're getting errors, try setting parallel to FALSE
 dsi_pop <- dsi(iyol_dsi, biograph_l, members_l, focals_l, females_l, grooming_l,
                min_cores_days = 60, within_grp = FALSE, parallel = TRUE)
