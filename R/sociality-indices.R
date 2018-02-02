@@ -710,21 +710,25 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
                                                   get_overlap_dates)) %>%
     dplyr::rowwise() %>%
     dplyr::mutate(coresidence_days = length(coresidence_dates)) %>%
-    dplyr::ungroup()
+    dplyr::ungroup() %>%
+    dplyr::filter(coresidence_days >= min_cores_days)
 
   ## Focal counts
   # Get total count of focals during each dyad's co-residence dates
   my_subset <- my_subset %>%
-    dplyr::mutate(n_focals = purrr::pmap_dbl(list(coresidence_dates, grp), get_focal_counts))
+    dplyr::mutate(n_focals = purrr::pmap_dbl(list(coresidence_dates, grp),
+                                             get_focal_counts)) %>%
+    dplyr::filter(n_focals > 0)
 
   ## Female counts
   # Get average number of females in group during the dyad's co-residence dates
   my_subset <- my_subset %>%
-    dplyr::mutate(n_females = purrr::pmap_dbl(list(coresidence_dates, grp), get_female_counts))
+    dplyr::mutate(n_females = purrr::pmap_dbl(list(coresidence_dates, grp),
+                                              get_female_counts)) %>%
+    dplyr::filter(n_females > 0)
 
   # Filter and calculate variables
   my_subset <- my_subset %>%
-    dplyr::filter(coresidence_days >= min_cores_days & n_females > 0 & n_focals > 0) %>%
     dplyr::mutate(OE = (n_focals / n_females) / coresidence_days,
                   log2OE = log2(OE)) %>%
     dplyr::filter(!is.na(OE))
