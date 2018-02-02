@@ -593,11 +593,11 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
 
     focal_dates <- my_members %>%
       dplyr::filter(sname == focal_sname & grp == focal_grp) %>%
-      pull(date)
+      dplyr::pull(date)
 
     partner_dates <- my_members %>%
       dplyr::filter(sname == partner_sname & grp == partner_grp) %>%
-      pull(date)
+      dplyr::pull(date)
 
     overlap_dates <- dplyr::intersect(focal_dates, partner_dates)
 
@@ -682,9 +682,10 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
   # Get sex and grp of partner
   # Remove dyads not in same groups
   dyads <- dyads %>%
-    inner_join(select(my_subset, partner = sname, partner_sex = sname_sex,
-                      partner_grp = grp), by = "partner") %>%
-    filter(grp == partner_grp)
+    dplyr::inner_join(dplyr::select(my_subset, partner = sname,
+                                    partner_sex = sname_sex, partner_grp = grp),
+                      by = "partner") %>%
+    dplyr::filter(grp == partner_grp)
 
   # Note that the step above created duplicated dyads
   # e.g., sname A and partner B, sname B and partner A
