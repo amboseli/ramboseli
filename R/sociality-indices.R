@@ -538,6 +538,8 @@ make_iyol <- function(babase, members_l, focals_l, grooming_l) {
 dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
                 min_cores_days = 60, within_grp = FALSE) {
 
+  ptm <- proc.time()
+
   # Return an empty tibble if the subset is empty
   if (is.null(my_iyol) |
       !all(names(my_iyol) %in% c("sname", "grp", "start", "end", "days_present", "sex",
@@ -560,6 +562,10 @@ dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
 
   my_iyol <- my_iyol %>%
     dplyr::mutate(dsi = purrr::pmap(list(sname, subset), get_focal_dsi))
+
+  tdiff <- (proc.time() - ptm)["elapsed"] / 60
+  message(paste0("Elapsed time: ", round(tdiff, 3), " minutes (",
+                 round(tdiff / 60, 3), ") hours."))
 
   return(my_iyol)
 }
@@ -1165,6 +1171,8 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, grooming_l, min_r
 #' @examples
 sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l, min_res_days = 60) {
 
+  ptm <- proc.time()
+
   # Return an empty tibble if the subset is empty
   if (is.null(my_iyol) |
       !all(names(my_iyol) %in% c("sname", "grp", "start", "end", "days_present", "sex",
@@ -1192,6 +1200,10 @@ sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l, min_res_day
     select(sname, grp, start, end, SCI_M, SCI_F)
 
   res <- left_join(my_iyol, sci_focal, by = c("sname", "grp", "start", "end"))
+
+  tdiff <- (proc.time() - ptm)["elapsed"] / 60
+  message(paste0("Elapsed time: ", round(tdiff, 3), " minutes (",
+                 round(tdiff / 60, 3), ") hours."))
 
   return(res)
 }
