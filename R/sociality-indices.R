@@ -536,7 +536,7 @@ make_iyol <- function(babase, members_l, focals_l, grooming_l) {
 #'
 #' @examples
 dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
-                min_cores_days = 60, within_grp = FALSE) {
+                 min_cores_days = 60, within_grp = FALSE, parallel = FALSE) {
 
   ptm <- proc.time()
 
@@ -549,16 +549,36 @@ dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
     stop("Problem with input data. Use the 'make_iyol' function to create the input.")
   }
 
-  my_iyol$subset <- list(NULL)
-  pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
-  for (i in 1:nrow(my_iyol)) {
-    my_iyol[i, ]$subset <- list(get_dyadic_subset(my_iyol[i, ], biograph_l,
-                                                  members_l, focals_l, females_l,
-                                                  grooming_l, min_cores_days,
-                                                  within_grp))
-    setTxtProgressBar(pb, i)
+  if (parallel) {
+    cores <- detectCores()
+    cl <- makeCluster(cores[1])
+    registerDoSNOW(cl)
+    pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3)
+    progress <- function(n) setTxtProgressBar(pb, n)
+    opts <- list(progress = progress)
+    subset <- foreach(i = 1:nrow(my_iyol), .options.snow = opts,
+                       .packages = c('tidyverse')) %dopar% {
+                         get_dyadic_subset(my_iyol[i, ], biograph_l,
+                                           members_l, focals_l, females_l,
+                                           grooming_l, min_cores_days,
+                                           within_grp)
+                       }
+    close(pb)
+    stopCluster(cl)
+    my_iyol <- add_column(my_iyol, subset)
   }
-  close(pb)
+  else {
+    my_iyol$subset <- list(NULL)
+    pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
+    for (i in 1:nrow(my_iyol)) {
+      my_iyol[i, ]$subset <- list(get_dyadic_subset(my_iyol[i, ], biograph_l,
+                                                    members_l, focals_l, females_l,
+                                                    grooming_l, min_cores_days,
+                                                    within_grp))
+      setTxtProgressBar(pb, i)
+    }
+    close(pb)
+  }
 
   my_iyol <- my_iyol %>%
     dplyr::mutate(dsi = purrr::pmap(list(sname, subset), get_focal_dsi))

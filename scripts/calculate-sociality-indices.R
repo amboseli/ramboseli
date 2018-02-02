@@ -2,8 +2,9 @@
 # setup -------------------------------------------------------------------
 
 Sys.setenv(TZ = 'UTC')
-list.of.packages <- list("tidyverse", "lubridate", "dbplyr", "purrrlyr",
-                         "RPostgreSQL", "zoo", "ramboseli")
+list.of.packages <- list("foreach", "doSNOW", "parallel", "tidyverse",
+                         "lubridate", "dbplyr", "purrrlyr", "RPostgreSQL",
+                         "zoo", "ramboseli")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if (length(new.packages)) install.packages(unlist(new.packages))
 lapply(list.of.packages, require, character.only = T)
@@ -52,9 +53,13 @@ iyol_dsi <- iyol %>%
 #            min_cores_days = 60, within_grp = TRUE)
 
 # Calculate population-level DSI subset for each row of data
-# Warning: takes ~29 hours!!!!
+# Warning: takes up to 30 hours!!!!
+# Faster if run using parallel computation; speed will depend on # of cores
+#
+# The option for parallel processing seems finicky and might not work on your computer.
+# If you're getting errors, try setting parallel to FALSE
 dsi_pop <- dsi(iyol_dsi, biograph_l, members_l, focals_l, females_l, grooming_l,
-               min_cores_days = 60, within_grp = FALSE)
+               min_cores_days = 60, within_grp = FALSE, parallel = TRUE)
 
 # Example of how to save / reload a data set
 # saveRDS(dsi, "data/dsi_2018-02-02.RDS")
