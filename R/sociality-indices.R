@@ -581,7 +581,7 @@ dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
   }
 
   my_iyol <- my_iyol %>%
-    dplyr::mutate(dsi = purrr::pmap(list(sname, subset), get_focal_dsi))
+    dplyr::mutate(dsi = purrr::pmap(list(sname, grp, subset), get_focal_dsi))
 
   tdiff <- (proc.time() - ptm)["elapsed"] / 60
   message(paste0("Elapsed time: ", round(tdiff, 3), " minutes (",
@@ -843,7 +843,7 @@ fit_dsi_regression <- function(df) {
 #' @return The input data with an additional list column containing the DSI variables.
 #'
 #' @examples
-get_focal_dsi <- function(my_sname, my_subset) {
+get_focal_dsi <- function(my_sname, my_grp, my_subset) {
 
   # Return an empty tibble if the subset is empty
   if (nrow(my_subset) == 0) {
@@ -868,7 +868,7 @@ get_focal_dsi <- function(my_sname, my_subset) {
   # Also calculate the bond-strength percentile from the
   # empirical cummulative distribution function
   focal_dsi <- my_subset %>%
-    dplyr::filter(sname == my_sname | partner == my_sname) %>%
+    dplyr::filter(grp == my_grp & (sname == my_sname | partner == my_sname)) %>%
     dplyr::mutate(bond_strength = dplyr::case_when(
       res_g_adj >= perc_90 ~ "VeryStronglyBonded",
       res_g_adj >= perc_50 ~ "StronglyBonded",
@@ -933,7 +933,7 @@ dsi_summary <- function(df) {
       sex == "F" & dyad_type == "F-F" ~ "F"),
       sex = fct_recode(sex, Male = "M", Female = "F")) %>%
     select(-dyad_type) %>%
-    gather(bond_cat, n_bonds, NotBonded, WeaklyBonded, StronglyBonded, VeryStronglyBonded) %>%
+    gather(bond_cat, n_bonds, contains("Bonded")) %>%
     unite(var, bond_cat, DSI_type) %>%
     spread(var, n_bonds, fill = 0) %>%
     select(sname, grp, start, end, ends_with("_M"), ends_with("_F"))
