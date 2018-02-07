@@ -383,6 +383,99 @@ subset_grooming <- function(babase, members_l) {
 }
 
 
+#' Obtain a subset of agonism data that excludes behavioral observation gaps.
+#'
+#' @param babase A DBI connection to the babase database
+#' @param members_l A subset of members table produced by the function 'subset_members'
+#'
+#' @return A subset of agonsism data that excludes behavioral observation gaps.
+#' @export
+#'
+#' @examples
+subset_agonism <- function(babase, members_l) {
+
+  if (class(babase) != "PostgreSQLConnection") {
+    stop("Invalid connection to babase.")
+  }
+
+  # babase-tables -----------------------------------------------------------
+
+  message("Creating connections to babase tables...")
+
+  # Database connections
+  biograph <- dplyr::tbl(babase, "biograph")
+  maturedates <- dplyr::tbl(babase, "maturedates")
+  actor_actees <- dplyr::tbl(babase, "actor_actees")
+  rankdates <- dplyr::tbl(babase, "rankdates")
+
+  # Local
+  maturedates_l <- dplyr::collect(maturedates)
+  rankdates_l <- dplyr::collect(rankdates)
+
+
+  # agonism-interactions-query ----------------------------------------------
+
+  message("Obtaining and validating agonism data...")
+
+  agonism <- actor_actees %>%
+    dplyr::inner_join(dplyr::select(biograph, sname, actor_sex = sex),
+                      by = c("actor" = "sname")) %>%
+    dplyr::inner_join(dplyr::select(biograph, sname, actee_sex = sex),
+                      by = c("actee" = "sname")) %>%
+    dplyr::filter(act %in% c("AS", "OS", "DS", "A") & actee_grp != 1.3 & actee_grp != 1.4 &
+                    (actee_grp < 3 | actee_grp == 9) &
+                    actor_grp != 1.3 & actor_grp != 1.4 & (actor_grp < 3 | actor_grp == 9)) %>%
+    dplyr::collect()
+
+  agonism <- agonism %>%
+    dplyr::left_join(dplyr::select(maturedates_l, sname, actor_matured = matured),
+                     by = c("actor" = "sname")) %>%
+    dplyr::left_join(dplyr::select(maturedates_l, sname, actee_matured = matured),
+                     by = c("actee" = "sname")) %>%
+    dplyr::left_join(dplyr::select(rankdates_l, sname, actor_ranked = ranked),
+                     by = c("actor" = "sname")) %>%
+    dplyr::left_join(dplyr::select(rankdates_l, sname, actee_ranked = ranked),
+                     by = c("actee" = "sname"))
+
+  agonism <- agonism %>%
+    dplyr::filter(((actor_sex == "F" & date >= actor_matured) |
+                     (actor_sex == "M" & date >= actor_ranked)) &
+                    ((actee_sex == "F" & date >= actee_matured) |
+                       (actee_sex == "M" & date >= actee_ranked)))
+
+  agonism <- agonism %>%
+    dplyr::select(iid, sid, act, date, actor, actor_grp, actee, actee_grp,
+                  actor_sex, actee_sex)
+
+  agonism$yearmon <- as.character(zoo::as.yearmon(agonism$date))
+
+
+  # agonism-data-manip ------------------------------------------------------
+
+  agonism <- agonism %>%
+    dplyr::select(iid, sid, act, actor, actee, actor_sex, actee_sex, date, yearmon,
+                  actor_grp, actee_grp)
+
+  ## Restrict the grooming data to the same data restrictions of members
+  grp_dates <- dplyr::distinct(members_l, grp, date)
+
+  temp1 <- agonism %>%
+    dplyr::inner_join(grp_dates, by = c("date", "actee_grp" = "grp"))
+
+  temp2 <- agonism %>%
+    dplyr::inner_join(grp_dates, by = c("date", "actor_grp" = "grp"))
+
+  agonism <- dplyr::bind_rows(temp1, temp2) %>%
+    dplyr::distinct(iid, .keep_all = TRUE)
+
+  # Remove trailing space for act "A "
+  agonism$act <- str_trim(agonism$act)
+
+  return(agonism)
+
+}
+
+
 #' Create a data frame for each adult individual year of life
 #'
 #' @param babase A DBI connection to the babase database
