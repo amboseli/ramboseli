@@ -1152,7 +1152,7 @@ get_mem_dates <- function(my_sub, members_l, df, sel = NULL) {
 }
 
 
-get_groom_dates <- function(my_sub, members_l, df, my_sex_var, my_role, my_sex) {
+get_interaction_dates <- function(my_sub, members_l, df, my_sex_var, my_role, my_sex) {
 
   groom_dates <- my_sub %>%
     dplyr::ungroup() %>%
@@ -1221,12 +1221,12 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, grooming_l, min_r
     dplyr::filter(!is.na(OE))
 
   ## Grooming given to females
-  gg_f <- get_groom_dates(my_subset, members_l, grooming_l, quo(actee_sex), "actor", "F") %>%
+  gg_f <- get_interaction_dates(my_subset, members_l, grooming_l, quo(actee_sex), "actor", "F") %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(GtoF = n())
 
   ## Grooming received from females
-  gr_f <- get_groom_dates(my_subset, members_l, grooming_l, quo(actor_sex), "actee", "F") %>%
+  gr_f <- get_interaction_dates(my_subset, members_l, grooming_l, quo(actor_sex), "actee", "F") %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(GfromF = n())
 
@@ -1256,12 +1256,12 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, grooming_l, min_r
   if (df$sex == "F") {
 
     ## Grooming given to males
-    gg_m <- get_groom_dates(my_subset, members_l, grooming_l, quo(actee_sex), "actor", "M") %>%
+    gg_m <- get_interaction_dates(my_subset, members_l, grooming_l, quo(actee_sex), "actor", "M") %>%
       dplyr::group_by(grp, sname) %>%
       dplyr::summarise(GtoM = n())
 
     ## Grooming received from males
-    gr_m <- get_groom_dates(my_subset, members_l, grooming_l, quo(actor_sex), "actee", "M") %>%
+    gr_m <- get_interaction_dates(my_subset, members_l, grooming_l, quo(actor_sex), "actee", "M") %>%
       dplyr::group_by(grp, sname) %>%
       dplyr::summarise(GfromM = n())
 
