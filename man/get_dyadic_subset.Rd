@@ -4,8 +4,8 @@
 \alias{get_dyadic_subset}
 \title{Obtain dyadic grooming subsets for the animal's year of life}
 \usage{
-get_dyadic_subset(df, biograph_l, members_l, focalcount, f_count,
-  grooming_interactions, min_cores_days = 60)
+get_dyadic_subset(df, biograph_l, members_l, focals_l, females_l, grooming_l,
+  min_cores_days = 60, within_grp = FALSE)
 }
 \arguments{
 \item{df}{One row individual-year-of-life data}
@@ -14,13 +14,15 @@ get_dyadic_subset(df, biograph_l, members_l, focalcount, f_count,
 
 \item{members_l}{A subset of members table produced by the function 'subset_members'}
 
-\item{focalcount}{A subset of focals produced by the function 'subset_focals'}
+\item{focals_l}{A subset of focals produced by the function 'subset_focals'}
 
-\item{f_count}{A subset of female counts produced by the function 'subset_females'}
+\item{females_l}{A subset of female counts produced by the function 'subset_females'}
 
-\item{grooming_interactions}{A subset of grooming data produced by the function 'subset_grooming'}
+\item{grooming_l}{A subset of grooming data produced by the function 'subset_grooming'}
 
 \item{min_cores_days}{The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.}
+
+\item{within_grp}{Logical value indicating whether regressions should be fit relative to dyads in entire population (default) or to dyads within-group}
 }
 \value{
 The input row with an additional list column containing the subset

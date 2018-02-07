@@ -40,6 +40,7 @@ members_l <- subset_members(babase)
 focals_l <- subset_focals(babase, members_l)
 females_l <- subset_females(members_l)
 grooming_l <- subset_grooming(babase, members_l)
+agonism_l <- subset_agonism(babase, members_l)
 
 # Make an individual-year-of-life data set for adults
 iyol <- make_iyol(babase, members_l, focals_l, grooming_l)
@@ -99,3 +100,21 @@ sci <- sci(iyol_sci, members_l, focals_l, females_l, grooming_l,
 # Example of how to save / reload a data set
 saveRDS(sci, "data/sci_2018-02-02.RDS")
 # sci <- readRDS("data/sci_2018-02-02.RDS")
+
+
+# calculate-agi -----------------------------------------------------------
+
+## Restrict to groups where the animal was present for at least 60 days
+iyol_agi <- iyol %>%
+  filter(days_present >= 60)
+
+agonism_a <- filter(agonism_l, act %in% c("A", "AS"))
+
+# Calculate AGI subset for each row of data
+# Warning: takes ~50 minutes!!!!
+agi <- agi(iyol_agi, members_l, focals_l, females_l, agonism_a,
+           min_res_days = 60, parallel = TRUE)
+
+# Example of how to save / reload a data set
+saveRDS(agi, "data/agi_2018-02-07.RDS")
+# agi <- readRDS("data/agi_2018-02-07.RDS")

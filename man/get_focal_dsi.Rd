@@ -4,7 +4,7 @@
 \alias{get_focal_dsi}
 \title{Calculate DSI variables for focal animal from a DSI subset}
 \usage{
-get_focal_dsi(my_sname, my_subset)
+get_focal_dsi(my_sname, my_grp, my_subset)
 }
 \arguments{
 \item{my_subset}{}

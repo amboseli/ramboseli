@@ -4,8 +4,9 @@
 \alias{dsi}
 \title{Calculate DSI variables from individual-year-of-life data}
 \usage{
-dsi(my_iyol, biograph_l, members_l, focalcount, f_count, grooming_interactions,
-  min_cores_days = 60)
+dsi(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
+  min_cores_days = 60, within_grp = FALSE, parallel = FALSE,
+  ncores = NULL)
 }
 \arguments{
 \item{my_iyol}{Individual-year-of-life data.}
@@ -14,13 +15,15 @@ dsi(my_iyol, biograph_l, members_l, focalcount, f_count, grooming_interactions,
 
 \item{members_l}{A subset of members table produced by the function 'subset_members'}
 
-\item{focalcount}{A subset of focals produced by the function 'subset_focals'}
+\item{focals_l}{A subset of focals produced by the function 'subset_focals'}
 
-\item{f_count}{A subset of female counts produced by the function 'subset_females'}
+\item{females_l}{A subset of female counts produced by the function 'subset_females'}
 
-\item{grooming_interactions}{A subset of grooming data produced by the function 'subset_grooming'}
+\item{grooming_l}{A subset of grooming data produced by the function 'subset_grooming'}
 
 \item{min_cores_days}{The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.}
+
+\item{within_grp}{Logical value indicating whether regressions should be fit relative to dyads in entire population (default) or to dyads within-group}
 }
 \value{
 The input data with an additional list columsn containing the full DSI subset and the focal DSI variables.

@@ -653,7 +653,7 @@ dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
       }
     }
     else {
-      message(paste0("Using all available cores: ", avail_ncores,
+      message(paste0("Using all available cores: ", avail_cores,
                      ". Use 'ncores' to specify number of cores to use."))
       ncores <- avail_cores
     }
@@ -1328,7 +1328,7 @@ sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l,
       }
     }
     else {
-      message(paste0("Using all available cores: ", avail_ncores,
+      message(paste0("Using all available cores: ", avail_cores,
                      ". Use 'ncores' to specify number of cores to use."))
       ncores <- avail_cores
     }
@@ -1370,6 +1370,203 @@ sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l,
     select(sname, grp, start, end, SCI_M, SCI_F)
 
   res <- left_join(my_iyol, sci_focal, by = c("sname", "grp", "start", "end"))
+
+  tdiff <- (proc.time() - ptm)["elapsed"] / 60
+  message(paste0("Elapsed time: ", round(tdiff, 3), " minutes (",
+                 round(tdiff / 60, 3), ") hours."))
+
+  return(res)
+}
+
+
+#' Obtain composite agonism subsets for the animal's year of life
+#'
+#' @param df One row individual-year-of-life data
+#' @param members_l A subset of members table produced by the function 'subset_members'
+#' @param focals_l A subset of focals produced by the function 'subset_focals'
+#' @param females_l A subset of female counts produced by the function 'subset_females'
+#' @param agonism_l A subset of agonism data produced by the function 'subset_agonism'
+#' @param min_res_days The minimum number of residence days needed to be included. Defaults to 60 days.
+#'
+#' @return The input row with an additional list column containing the subset
+#' @export
+#'
+#' @examples
+get_agi_subset <- function(df, members_l, focals_l, females_l, agonism_l, min_res_days = 60) {
+
+  zero_daily_count <- 1/365.25
+  log_zero_daily_count <- log2(zero_daily_count)
+
+  my_subset <- members_l %>%
+    dplyr::inner_join(select(df, -sname, -grp), by = c("sex")) %>%
+    dplyr::filter(date >= start & date <= end) %>%
+    dplyr::group_by(sname, grp) %>%
+    dplyr::summarise(days_present = n(),
+                     start = min(date),
+                     end = max(date))
+
+  ## Focal counts
+  # Get all focals during relevant time period in grp
+  my_focals <- get_mem_dates(my_subset, members_l, focals_l, sel = quo(sum)) %>%
+    dplyr::group_by(grp, sname) %>%
+    dplyr::summarise(n_focals = sum(sum))
+
+  ## Female counts
+  my_females <- get_mem_dates(my_subset, members_l, females_l, sel = quo(nr_females)) %>%
+    dplyr::group_by(grp, sname) %>%
+    dplyr::summarise(mean_f_count = mean(nr_females))
+
+  # Join back to my_subset to add n_focals column
+  my_subset <- my_subset %>%
+    dplyr::left_join(my_focals, by = c("grp", "sname")) %>%
+    dplyr::left_join(my_females, by = c("grp", "sname"))
+
+  # Filter and calculate variables
+  my_subset <- my_subset %>%
+    dplyr::filter(days_present >= min_res_days & mean_f_count > 0) %>%
+    dplyr::mutate(OE = (n_focals / mean_f_count) / days_present,
+                  log2OE = log2(OE)) %>%
+    dplyr::filter(!is.na(OE))
+
+  ## Agonism given to females
+  gg_f <- get_interaction_dates(my_subset, members_l, agonism_l,
+                                quo(actee_sex), "actor", "F") %>%
+    dplyr::group_by(grp, sname) %>%
+    dplyr::summarise(AtoF = n())
+
+  ## Agonism received from females
+  gr_f <- get_interaction_dates(my_subset, members_l, agonism_l,
+                                quo(actor_sex), "actee", "F") %>%
+    dplyr::group_by(grp, sname) %>%
+    dplyr::summarise(AfromF = n())
+
+  ## Agonism given to males
+  gg_m <- get_interaction_dates(my_subset, members_l, agonism_l,
+                                quo(actee_sex), "actor", "M") %>%
+    dplyr::group_by(grp, sname) %>%
+    dplyr::summarise(AtoM = n())
+
+  ## Agonism received from males
+  gr_m <- get_interaction_dates(my_subset, members_l, agonism_l,
+                                quo(actor_sex), "actee", "M") %>%
+    dplyr::group_by(grp, sname) %>%
+    dplyr::summarise(AfromM = n())
+
+  my_subset <- my_subset %>%
+    dplyr::left_join(gg_f, by = c("grp", "sname")) %>%
+    dplyr::left_join(gr_f, by = c("grp", "sname")) %>%
+    dplyr::left_join(gg_m, by = c("grp", "sname")) %>%
+    dplyr::left_join(gr_m, by = c("grp", "sname"))
+
+  my_subset <- my_subset %>%
+    tidyr::replace_na(list(AtoF = 0, AfromF = 0, AtoM = 0, AfromM = 0))
+
+  # Calculate variables
+  my_subset <- my_subset %>%
+    dplyr::mutate(AtoF_daily = AtoF / days_present,
+                  log2AtoF_daily = dplyr::case_when(
+                    AtoF == 0 ~ log_zero_daily_count,
+                    TRUE ~ log2(AtoF_daily)),
+                  AfromF_daily = AfromF / days_present,
+                  log2AfromF_daily = dplyr::case_when(
+                    AfromF == 0 ~ log_zero_daily_count,
+                    TRUE ~ log2(AfromF_daily)),
+                  AtoM_daily = AtoM / days_present,
+                  log2AtoM_daily = dplyr::case_when(
+                    AtoM == 0 ~ log_zero_daily_count,
+                    TRUE ~ log2(AtoM_daily)),
+                  AfromM_daily = AfromM / days_present,
+                  log2AfromM_daily = dplyr::case_when(
+                    AfromM == 0 ~ log_zero_daily_count,
+                    TRUE ~ log2(AfromM_daily)))
+
+  my_subset$AGI_F_Dir <- as.numeric(residuals(lm(data = my_subset, log2AtoF_daily ~ log2OE)))
+  my_subset$AGI_F_Rec <- as.numeric(residuals(lm(data = my_subset, log2AfromF_daily ~ log2OE)))
+  my_subset$AGI_M_Dir <- as.numeric(residuals(lm(data = my_subset, log2AtoM_daily ~ log2OE)))
+  my_subset$AGI_M_Rec <- as.numeric(residuals(lm(data = my_subset, log2AfromM_daily ~ log2OE)))
+
+  return(my_subset)
+}
+
+#' Calculate AGI variables from individual-year-of-life data
+#'
+#' @param my_iyol Individual-year-of-life data.
+#' @param members_l A subset of members table produced by the function 'subset_members'
+#' @param focals_l A subset of focals produced by the function 'subset_focals'
+#' @param females_l A subset of female counts produced by the function 'subset_females'
+#' @param agonism_l A subset of agonism data produced by the function 'subset_agonism'
+#' @param min_res_days The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.
+#'
+#' @return The input data with an additional list columsn containing the full AGI subset and variables.
+#' @export
+#'
+#' @examples
+agi <- function(my_iyol, members_l, focals_l, females_l, agonism_l,
+                min_res_days = 60, parallel = FALSE, ncores = NULL) {
+
+  ptm <- proc.time()
+
+  # Return an empty tibble if the subset is empty
+  if (is.null(my_iyol) |
+      !all(names(my_iyol) %in% c("sname", "grp", "start", "end", "days_present", "sex",
+                                 "birth", "first_start_date", "statdate", "birth_dates",
+                                 "midpoint", "age_start_yrs", "age_class")) |
+      min_res_days < 0) {
+    stop("Problem with input data. Use the 'make_iyol' function to create the input.")
+  }
+
+  if (parallel) {
+    avail_cores <- detectCores()
+    if (!is.null(ncores)) {
+      if (ncores > avail_cores) {
+        message(paste0("Ignoring 'ncores' argument because only ", avail_cores,
+                       " cores are available."))
+        ncores <- avail_cores
+      }
+    }
+    else {
+      message(paste0("Using all available cores: ", avail_cores,
+                     ". Use 'ncores' to specify number of cores to use."))
+      ncores <- avail_cores
+    }
+
+    cl <- makeCluster(ncores)
+    registerDoSNOW(cl)
+    pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3)
+    progress <- function(n) setTxtProgressBar(pb, n)
+    opts <- list(progress = progress)
+    subset <- foreach(i = 1:nrow(my_iyol), .options.snow = opts,
+                      .packages = c('tidyverse')) %dopar% {
+                        get_agi_subset(my_iyol[i, ], members_l, focals_l,
+                                       females_l, agonism_l, min_res_days)
+                      }
+    close(pb)
+    stopCluster(cl)
+    my_iyol <- add_column(my_iyol, subset)
+  }
+  else {
+    if (!is.null(ncores)) {
+      message("Ignoring 'ncores' argument because 'parallel' set to FALSE.")
+    }
+    my_iyol$subset <- list(NULL)
+    pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
+    for (i in 1:nrow(my_iyol)) {
+      my_iyol[i, ]$subset <- list(get_agi_subset(my_iyol[i, ], members_l,
+                                                 focals_l, females_l,
+                                                 agonism_l,
+                                                 min_res_days))
+      setTxtProgressBar(pb, i)
+      close(pb)
+    }
+  }
+
+  agi_focal <- my_iyol %>%
+    unnest() %>%
+    mutate(focal = (sname == sname1 & grp == grp1)) %>%
+    filter(focal) %>%
+    select(sname, grp, start, end, AGI_F_Dir, AGI_F_Rec, AGI_M_Dir, AGI_M_Rec)
+
+  res <- left_join(my_iyol, agi_focal, by = c("sname", "grp", "start", "end"))
 
   tdiff <- (proc.time() - ptm)["elapsed"] / 60
   message(paste0("Elapsed time: ", round(tdiff, 3), " minutes (",
