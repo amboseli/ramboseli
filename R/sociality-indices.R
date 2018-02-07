@@ -536,7 +536,8 @@ make_iyol <- function(babase, members_l, focals_l, grooming_l) {
 #'
 #' @examples
 dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
-                 min_cores_days = 60, within_grp = FALSE, parallel = FALSE) {
+                min_cores_days = 60, within_grp = FALSE, parallel = FALSE,
+                ncores = NULL) {
 
   ptm <- proc.time()
 
@@ -550,8 +551,21 @@ dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
   }
 
   if (parallel) {
-    cores <- detectCores()
-    cl <- makeCluster(cores[1])
+    avail_cores <- detectCores()
+    if (!is.null(ncores)) {
+      if (ncores > avail_cores) {
+        message(paste0("Ignoring 'ncores' argument because only ", avail_cores,
+                       " cores are available."))
+        ncores <- avail_cores
+      }
+    }
+    else {
+      message(paste0("Using all available cores: ", avail_ncores,
+                     ". Use 'ncores' to specify number of cores to use."))
+      ncores <- avail_cores
+    }
+
+    cl <- makeCluster(ncores)
     registerDoSNOW(cl)
     pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3)
     progress <- function(n) setTxtProgressBar(pb, n)
@@ -568,6 +582,9 @@ dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
     my_iyol <- add_column(my_iyol, subset)
   }
   else {
+    if (!is.null(ncores)) {
+      message("Ignoring 'ncores' argument because 'parallel' set to FALSE.")
+    }
     my_iyol$subset <- list(NULL)
     pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
     for (i in 1:nrow(my_iyol)) {
@@ -1194,7 +1211,8 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, grooming_l, min_r
 #' @export
 #'
 #' @examples
-sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l, min_res_days = 60, parallel = FALSE) {
+sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l,
+                min_res_days = 60, parallel = FALSE, ncores = NULL) {
 
   ptm <- proc.time()
 
@@ -1208,8 +1226,21 @@ sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l, min_res_day
   }
 
   if (parallel) {
-    cores <- detectCores()
-    cl <- makeCluster(cores[1])
+    avail_cores <- detectCores()
+    if (!is.null(ncores)) {
+      if (ncores > avail_cores) {
+        message(paste0("Ignoring 'ncores' argument because only ", avail_cores,
+                       " cores are available."))
+        ncores <- avail_cores
+      }
+    }
+    else {
+      message(paste0("Using all available cores: ", avail_ncores,
+                     ". Use 'ncores' to specify number of cores to use."))
+      ncores <- avail_cores
+    }
+
+    cl <- makeCluster(ncores)
     registerDoSNOW(cl)
     pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3)
     progress <- function(n) setTxtProgressBar(pb, n)
@@ -1224,6 +1255,9 @@ sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l, min_res_day
     my_iyol <- add_column(my_iyol, subset)
   }
   else {
+    if (!is.null(ncores)) {
+      message("Ignoring 'ncores' argument because 'parallel' set to FALSE.")
+    }
     my_iyol$subset <- list(NULL)
     pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
     for (i in 1:nrow(my_iyol)) {
