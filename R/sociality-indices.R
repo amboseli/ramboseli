@@ -378,6 +378,9 @@ subset_grooming <- function(babase, members_l) {
 
   # NOTE: Duplicated rows not removed in original code
 
+  # Remove trailing space for act "G "
+  grooming_l$act <- stringr::str_trim(grooming_l$act)
+
   return(grooming_l)
 
 }
@@ -469,7 +472,7 @@ subset_agonism <- function(babase, members_l) {
     dplyr::distinct(iid, .keep_all = TRUE)
 
   # Remove trailing space for act "A "
-  agonism$act <- str_trim(agonism$act)
+  agonism$act <- stringr::str_trim(agonism$act)
 
   return(agonism)
 
