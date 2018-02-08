@@ -46,8 +46,8 @@ agonism_l <- subset_agonism(babase, members_l)
 iyol <- make_iyol(babase, members_l, focals_l, grooming_l)
 
 # Example of how to save / reload a data set
-# saveRDS(iyol, "data/iyol_2018-02-02.RDS")
-# iyol <- readRDS("data/iyol_2018-02-02.RDS")
+saveRDS(iyol, "data/iyol_2018-02-08.RDS")
+# iyol <- readRDS("data/iyol_2018-02-08.RDS")
 
 
 # calculate-dsi -----------------------------------------------------------
@@ -98,8 +98,8 @@ sci <- sci(iyol_sci, members_l, focals_l, females_l, grooming_l,
            min_res_days = 60, parallel = TRUE)
 
 # Example of how to save / reload a data set
-saveRDS(sci, "data/sci_2018-02-02.RDS")
-# sci <- readRDS("data/sci_2018-02-02.RDS")
+saveRDS(sci, "data/sci_2018-02-08.RDS")
+# sci <- readRDS("data/sci_2018-02-08.RDS")
 
 
 # calculate-agi -----------------------------------------------------------
