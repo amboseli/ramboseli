@@ -965,7 +965,7 @@ get_focal_dsi <- function(my_sname, my_grp, my_subset) {
 
   # Calculate 50 and 90 percentiles from full set of residuals
   # This represents all dyads of a given type in the group during the year
-  # Including the "zero-grooming" values set to -Inf
+  # NOT including the "zero-grooming" values set to -Inf
   percs <- my_subset %>%
     dplyr::group_by(dyad_type) %>%
     dplyr::filter(g_total > 0) %>%
@@ -978,8 +978,6 @@ get_focal_dsi <- function(my_sname, my_grp, my_subset) {
   # The focal DSI subset should contain only dyads that include my_sname
   # This can be in either the sname or partner column
   # Categorize as very strongly bonded, strongly bonded, weakly bonded, or not bonded
-  # Also calculate the bond-strength percentile from the
-  # empirical cummulative distribution function
   focal_dsi <- my_subset %>%
     dplyr::filter(grp == my_grp & (sname == my_sname | partner == my_sname)) %>%
     dplyr::mutate(bond_strength = dplyr::case_when(
@@ -1577,4 +1575,443 @@ agi <- function(my_iyol, members_l, focals_l, females_l, agonism_l,
                  round(tdiff / 60, 3), ") hours."))
 
   return(res)
+}
+
+#' Calculate dyadic index variables from individual-year-of-life data
+#'
+#' @param my_iyol Individual-year-of-life data.
+#' @param biograph_l A local copy of the biograph table
+#' @param members_l A subset of members table produced by the function 'subset_members'
+#' @param focals_l A subset of focals produced by the function 'subset_focals'
+#' @param females_l A subset of female counts produced by the function 'subset_females'
+#' @param agonism_l A subset of agonism data produced by the function 'subset_agonism'
+#' @param min_cores_days The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.
+#' @param within_grp Logical value indicating whether regressions should be fit relative to dyads in entire population (default) or to dyads within-group
+#'
+#' @return The input data with an additional list columsn containing the full DSI subset and the focal DSI variables.
+#' @export
+#'
+#' @examples
+dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, interactions_l,
+                         min_cores_days = 60, within_grp = FALSE, parallel = FALSE,
+                         ncores = NULL, directional = FALSE) {
+
+  ptm <- proc.time()
+
+  # Return an empty tibble if the subset is empty
+  if (is.null(my_iyol) |
+      !all(names(my_iyol) %in% c("sname", "grp", "start", "end", "days_present", "sex",
+                                 "birth", "first_start_date", "statdate", "birth_dates",
+                                 "midpoint", "age_start_yrs", "age_class")) |
+      min_cores_days < 0) {
+    stop("Problem with input data. Use the 'make_iyol' function to create the input.")
+  }
+
+  if (parallel) {
+    avail_cores <- detectCores()
+    if (!is.null(ncores)) {
+      if (ncores > avail_cores) {
+        message(paste0("Ignoring 'ncores' argument because only ", avail_cores,
+                       " cores are available."))
+        ncores <- avail_cores
+      }
+    }
+    else {
+      message(paste0("Using all available cores: ", avail_cores,
+                     ". Use 'ncores' to specify number of cores to use."))
+      ncores <- avail_cores
+    }
+
+    cl <- makeCluster(ncores)
+    registerDoSNOW(cl)
+    pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3)
+    progress <- function(n) setTxtProgressBar(pb, n)
+    opts <- list(progress = progress)
+    subset <- foreach(i = 1:nrow(my_iyol), .options.snow = opts,
+                      .packages = c('tidyverse')) %dopar% {
+                        get_dyadic_subset2(my_iyol[i, ], biograph_l,
+                                          members_l, focals_l, females_l,
+                                          interactions_l, min_cores_days,
+                                          within_grp, directional)
+                      }
+    close(pb)
+    stopCluster(cl)
+    my_iyol <- add_column(my_iyol, subset)
+  }
+  else {
+    if (!is.null(ncores)) {
+      message("Ignoring 'ncores' argument because 'parallel' set to FALSE.")
+    }
+    my_iyol$subset <- list(NULL)
+    pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
+    for (i in 1:nrow(my_iyol)) {
+      my_iyol[i, ]$subset <- list(get_dyadic_subset(my_iyol[i, ], biograph_l,
+                                                    members_l, focals_l, females_l,
+                                                    interactions_l, min_cores_days,
+                                                    within_grp, directional))
+      setTxtProgressBar(pb, i)
+    }
+    close(pb)
+  }
+
+  my_iyol <- my_iyol %>%
+    dplyr::mutate(di = purrr::pmap(list(sname, grp, subset), get_focal_directed_index))
+
+  tdiff <- (proc.time() - ptm)["elapsed"] / 60
+  message(paste0("Elapsed time: ", round(tdiff, 3), " minutes (",
+                 round(tdiff / 60, 3), ") hours."))
+
+  return(my_iyol)
+}
+
+
+#' Obtain dyadic interaction subsets for the animal's year of life
+#'
+#' @param df One row individual-year-of-life data
+#' @param biograph_l A local copy of the biograph table
+#' @param members_l A subset of members table produced by the function 'subset_members'
+#' @param focals_l A subset of focals produced by the function 'subset_focals'
+#' @param females_l A subset of female counts produced by the function 'subset_females'
+#' @param interactions_l A subset of interaction data
+#' @param min_cores_days The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.
+#' @param within_grp Logical value indicating whether regressions should be fit relative to dyads in entire population (default) or to dyads within-group
+#'
+#' @return The input row with an additional list column containing the subset
+#'
+#' @examples
+get_dyadic_subset2 <- function(df, biograph_l, members_l, focals_l, females_l,
+                              interactions_l, min_cores_days = 60, within_grp = FALSE,
+                              directional = FALSE) {
+
+  # Find and return all co-residence dates for focal_sname and partner_sname in my_members
+  get_overlap_dates <- function(focal_sname, partner_sname, focal_grp, partner_grp) {
+
+    focal_dates <- my_members %>%
+      dplyr::filter(sname == focal_sname & grp == focal_grp) %>%
+      dplyr::pull(date)
+
+    partner_dates <- my_members %>%
+      dplyr::filter(sname == partner_sname & grp == partner_grp) %>%
+      dplyr::pull(date)
+
+    overlap_dates <- dplyr::intersect(focal_dates, partner_dates)
+
+    return(overlap_dates)
+  }
+
+  # Return total count of focals during co-residence dates
+  get_focal_counts <- function(coresidence_dates, focal_grp) {
+
+    res <- my_focals %>%
+      dplyr::filter(date %in% coresidence_dates & grp == focal_grp)
+
+    return(sum(res$sum))
+  }
+
+  # Return average number of females present in grp during co-residence dates
+  get_female_counts <- function(coresidence_dates, focal_grp) {
+
+    res <- my_females %>%
+      dplyr::filter(date %in% coresidence_dates & grp == focal_grp)
+
+    return(mean(res$nr_females))
+  }
+
+  # Return grooming by actor to actee during co-residence dates
+  get_interactions <- function(my_actor, my_actee, focal_grp, partner_grp) {
+
+    res <- my_interactions %>%
+      dplyr::filter(actor == my_actor & actor_grp == focal_grp & actee == my_actee & actee_grp == partner_grp)
+
+    return(nrow(res))
+  }
+
+  my_grp <- df$grp
+  my_sname <- df$sname
+  my_start <- df$start
+  my_end <- df$end
+
+  # Put some subsets in environment for faster performance
+  if (within_grp) {
+    my_members <- dplyr::filter(members_l, grp == my_grp & date >= my_start & date <= my_end)
+    my_focals <- dplyr::filter(focals_l, grp == my_grp & date >= my_start & date <= my_end)
+    my_females <- dplyr::filter(females_l, grp == my_grp & date >= my_start & date <= my_end)
+    my_interactions <- interactions_l %>%
+      dplyr::filter((actor_grp == my_grp | actee_grp == my_grp) & date >= my_start & date <= my_end)
+
+    # Find all distinct members WITHIN GROUP between start and end dates
+    # For each animal in each group durign this time, calculate:
+    # number of days present, first date, last date
+    my_subset <- my_members %>%
+      dplyr::rename(sname_sex = sex) %>%
+      dplyr::inner_join(select(df, -sname, -sex), by = c("grp")) %>%
+      dplyr::group_by(sname, grp, sname_sex) %>%
+      dplyr::summarise(days_present = n(),
+                       start = min(date),
+                       end = max(date))
+  }
+  else {
+    my_members <- dplyr::filter(members_l, date >= my_start & date <= my_end)
+    my_focals <- dplyr::filter(focals_l, date >= my_start & date <= my_end)
+    my_females <- dplyr::filter(females_l, date >= my_start & date <= my_end)
+    my_interactions <- interactions_l %>%
+      dplyr::filter(date >= my_start & date <= my_end)
+
+    # Find all distinct members IN POPULATION between start and end dates
+    # For each animal in each group durign this time, calculate:
+    # number of days present, first date, last date
+    my_subset <- my_members %>%
+      dplyr::rename(sname_sex = sex) %>%
+      dplyr::group_by(sname, grp, sname_sex) %>%
+      dplyr::summarise(days_present = n(),
+                       start = min(date),
+                       end = max(date))
+  }
+
+  # For each of these records, find all possible dyad partners
+  # Store as new list column and unnest to expand
+  dyads <- my_subset %>%
+    dplyr::mutate(partner = list(my_subset$sname[my_subset$sname != sname])) %>%
+    tidyr::unnest()
+
+  # Get sex and grp of partner
+  # Remove dyads not in same groups
+  dyads <- dyads %>%
+    dplyr::inner_join(dplyr::select(my_subset, partner = sname,
+                                    partner_sex = sname_sex, partner_grp = grp),
+                      by = "partner") %>%
+    dplyr::filter(grp == partner_grp)
+
+  # Note that the step above created duplicated dyads
+  # e.g., sname A and partner B, sname B and partner A
+  # If DSI is symmetric, these can be removed
+  # That's true here, so remove duplicate dyads
+  my_subset <- dyads %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(tmp = paste(grp, sort(c(sname, partner)), collapse = '')) %>%
+    dplyr::distinct(tmp, .keep_all = TRUE) %>%
+    dplyr::select(-tmp) %>%
+    dplyr::ungroup()
+
+  # Remove male-male dyads for grooming
+  if (interactions_l$act[[1]] == "G") {
+    my_subset <- my_subset %>%
+      dplyr::filter(!(sname_sex == "M" & partner_sex == "M"))
+  }
+
+  ## Co-residence dates
+  # Find all dates during which focal and partner co-resided in my_grp
+  # Get a count of these dates
+  my_subset <- my_subset %>%
+    dplyr::mutate(coresidence_dates = purrr::pmap(list(sname, partner, grp, partner_grp),
+                                                  get_overlap_dates)) %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(coresidence_days = length(coresidence_dates)) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(coresidence_days >= min_cores_days)
+
+  ## Focal counts
+  # Get total count of focals during each dyad's co-residence dates
+  my_subset <- my_subset %>%
+    dplyr::mutate(n_focals = purrr::pmap_dbl(list(coresidence_dates, grp),
+                                             get_focal_counts)) %>%
+    dplyr::filter(n_focals > 0)
+
+  ## Female counts
+  # Get average number of females in group during the dyad's co-residence dates
+  my_subset <- my_subset %>%
+    dplyr::mutate(n_females = purrr::pmap_dbl(list(coresidence_dates, grp),
+                                              get_female_counts)) %>%
+    dplyr::filter(n_females > 0)
+
+  # Remove coresidence_dates to make object simpler
+  my_subset <- select(my_subset, -coresidence_dates)
+
+  # Filter and calculate variables
+  my_subset <- my_subset %>%
+    dplyr::mutate(OE = (n_focals / n_females) / coresidence_days,
+                  log2OE = log2(OE)) %>%
+    dplyr::filter(!is.na(OE))
+
+  # Exit if no data meet the criteria, exit without proceeding further
+  # Return NULL
+  if (nrow(my_subset) == 0) {
+    return(dplyr::tbl_df(NULL))
+  }
+
+  if (!directional) {
+
+    ## Interactions between dyad during the period of interest
+    # Since grooming dates are 1st of month for many years, it does not work
+    # to restrict this to co-resident dates only. Instead, use start and end.
+    # Co-residence is (usually) implied by the grooming interaction.
+    # i_given is behavior given by sname to partner
+    # i_received is behavior received by sname from partner
+    my_subset <- my_subset %>%
+      dplyr::mutate(i_given = purrr::pmap_dbl(list(sname, partner, grp, partner_grp),
+                                              get_interactions),
+                    i_received = purrr::pmap_dbl(list(partner, sname, partner_grp, grp),
+                                                 get_interactions),
+                    i_total = i_given + i_received)
+
+    # Calculate variables
+    my_subset <- my_subset %>%
+      dplyr::mutate(i_adj = i_total / coresidence_days,
+                    log2_i_adj = log2(i_adj))
+
+    # Classify dyads by dyad type ("F-F" or "F-M"), and nest by dyad type
+    my_subset <- my_subset %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(dyad = paste(sort(c(sname, partner)), collapse = '-'),
+                    dyad_type = paste(sort(c(sname_sex, partner_sex)), collapse = '-')) %>%
+      dplyr::ungroup() %>%
+      dplyr::filter(dyad_type != "M-M") %>%
+      dplyr::group_by(dyad_type) %>%
+      tidyr::nest()
+
+    # Fit regression separately for the two dyad types and get residuals
+    my_subset <- my_subset %>%
+      dplyr::mutate(data = purrr::map(data, fit_dyadic_regression)) %>%
+      tidyr::unnest()
+
+    # Reorganize columns
+    my_subset <- my_subset %>%
+      dplyr::select(-coresidence_dates) %>%
+      dplyr::select(sname, sname_sex, partner, partner_sex, everything()) %>%
+      dplyr::arrange(sname, partner)
+  }
+
+  # Behaviors for which direction needs to be preserved, e.g., agonism
+  else {
+
+    sub_d1 <- my_subset %>%
+      rename_at(vars(contains("partner")), funs(sub('partner', 'anim2', .))) %>%
+      rename("anim1" = "sname", "anim1_grp" = "grp", "anim1_sex" = "sname_sex") %>%
+      select(contains("anim1"), contains("anim2"), everything())
+
+    sub_d2 <- my_subset %>%
+      rename_at(vars(contains("partner")), funs(sub('partner', 'anim1', .))) %>%
+      rename("anim2" = "sname", "anim2_grp" = "grp", "anim2_sex" = "sname_sex") %>%
+      select(contains("anim1"), contains("anim2"), everything())
+
+    my_subset <- bind_rows(sub_d1, sub_d2)
+
+    my_subset <- my_subset %>%
+      rowwise() %>%
+      mutate(i_type = paste(anim1_sex, anim2_sex, sep = '-')) %>%
+      ungroup()
+
+    ## Interactions between dyad during the period of interest
+    # Since grooming dates are 1st of month for many years, it does not work
+    # to restrict this to co-resident dates only. Instead, use start and end.
+    # Co-residence is (usually) implied by the interaction.
+    # i_given is behavior given by sname to partner
+    # i_received is behavior received by sname from partner
+    my_subset <- my_subset %>%
+      dplyr::mutate(i_dir = purrr::pmap_dbl(list(anim1, anim2, anim1_grp, anim2_grp),
+                                              get_interactions))
+
+    # Calculate variables
+    my_subset <- my_subset %>%
+      dplyr::mutate(i_adj = i_dir / coresidence_days,
+                    log2_i_adj = log2(i_adj))
+
+    # Classify dyads by dyad type ("F-F" or "F-M"), and nest by dyad type
+    my_subset <- my_subset %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(dyad = paste(sort(c(anim1, anim2)), collapse = '-'),
+                    dyad_type = paste(sort(c(anim1_sex, anim2_sex)), collapse = '-')) %>%
+      dplyr::ungroup() %>%
+      dplyr::group_by(i_type) %>%
+      tidyr::nest()
+
+    # Fit regression separately for the different dyad types and get residuals
+    my_subset <- my_subset %>%
+      dplyr::mutate(data = purrr::map(data, fit_dyadic_regression)) %>%
+      tidyr::unnest()
+
+    # Reorganize columns
+    my_subset <- my_subset %>%
+      dplyr::select(sname = anim1, grp = anim1_grp, sname_sex = anim1_sex,
+                    partner = anim2, partner_grp = anim2_grp,
+                    partner_sex = anim2_sex, everything()) %>%
+      dplyr::arrange(sname, partner)
+  }
+
+  return(my_subset)
+}
+
+#' Fit dyadic index regression on subset of data
+#'
+#' @param df A subset of data on which to fit a regression of interactions on observer effort.
+#'
+#' @return The input data with an additional column containing the regression residuals.
+#'
+#' @examples
+fit_dyadic_regression <- function(df) {
+
+  # There will be lots of zeros in most subsets
+  # If present, remove these before fitting regression model
+  zero_subset <- dplyr::filter(df, i_adj == 0)
+
+  if (nrow(zero_subset) > 0) {
+
+    # Fit regression to non-zero values
+    nonzero_subset <- dplyr::filter(df, i_adj != 0)
+    nonzero_subset$res_i_adj <- as.numeric(residuals(lm(data = nonzero_subset, log2_i_adj ~ log2OE)))
+
+    # Assign a value of -Inf for the residuals of zero values (for calculating quantiles)
+    zero_subset$res_i_adj <- -Inf
+
+    # Combine with zero and non-zero subsets
+    df <- dplyr::bind_rows(zero_subset, nonzero_subset)
+  }
+  else {
+    df$res_i_adj <- as.numeric(residuals(lm(data = df, log2_i_adj ~ log2OE)))
+  }
+
+  return(df)
+
+}
+
+
+#' Calculate dyadic variables for focal animal from a dyadic subset
+#'
+#' @param my_sname
+#' @param my_subset
+#'
+#' @return The input data with an additional list column containing the dyadic variables.
+#'
+#' @examples
+get_focal_directed_index <- function(my_sname, my_grp, my_subset) {
+
+  # Return an empty tibble if the subset is empty
+  if (nrow(my_subset) == 0) {
+    return(dplyr::tbl_df(NULL))
+  }
+
+  # Calculate 50 and 90 percentiles from full set of residuals
+  # This represents all dyads of a given type in the group during the year
+  # NOT including the "zero-interaction" values set to -Inf
+  percs <- my_subset %>%
+    dplyr::group_by(i_type) %>%
+    dplyr::filter(i_dir > 0) %>%
+    dplyr::summarise(perc_50 = quantile(res_i_adj, probs = 0.5),
+                     perc_90 = quantile(res_i_adj, probs = 0.9))
+
+  # Add percentile columns to my_subset
+  my_subset <- dplyr::left_join(my_subset, percs, by = "i_type")
+
+  # The focal subset should contain only dyads that include my_sname
+  # This can be in either the sname or partner column
+  # Categorize as very strongly bonded, strongly bonded, weakly bonded, or not bonded
+  focal_di <- my_subset %>%
+    dplyr::filter(grp == my_grp & (sname == my_sname | partner == my_sname)) %>%
+    dplyr::mutate(bond_strength = dplyr::case_when(
+      res_i_adj >= perc_90 ~ "VeryStronglyBonded",
+      res_i_adj >= perc_50 ~ "StronglyBonded",
+      res_i_adj >= -9999999 ~ "WeaklyBonded",
+      TRUE ~ "NotBonded"))
+
+  return(focal_di)
 }
