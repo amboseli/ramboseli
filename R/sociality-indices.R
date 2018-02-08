@@ -1400,6 +1400,7 @@ get_agi_subset <- function(df, members_l, focals_l, females_l, agonism_l, min_re
   zero_daily_count <- 1/365.25
   log_zero_daily_count <- log2(zero_daily_count)
 
+  # Get all members of same sex as the focal animal during relevant time period
   my_subset <- members_l %>%
     dplyr::inner_join(select(df, -sname, -grp), by = c("sex")) %>%
     dplyr::filter(date >= start & date <= end) %>%
@@ -1431,25 +1432,25 @@ get_agi_subset <- function(df, members_l, focals_l, females_l, agonism_l, min_re
                   log2OE = log2(OE)) %>%
     dplyr::filter(!is.na(OE))
 
-  ## Agonism given to females
+  ## Agonism given to females by each actor of focal's sex
   gg_f <- get_interaction_dates(my_subset, members_l, agonism_l,
                                 quo(actee_sex), "actor", "F") %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(AtoF = n())
 
-  ## Agonism received from females
+  ## Agonism received from females by each actee of focal's sex
   gr_f <- get_interaction_dates(my_subset, members_l, agonism_l,
                                 quo(actor_sex), "actee", "F") %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(AfromF = n())
 
-  ## Agonism given to males
+  ## Agonism given to males by each actor of focal's sex
   gg_m <- get_interaction_dates(my_subset, members_l, agonism_l,
                                 quo(actee_sex), "actor", "M") %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(AtoM = n())
 
-  ## Agonism received from males
+  ## Agonism received from males by each actee of focal's sex
   gr_m <- get_interaction_dates(my_subset, members_l, agonism_l,
                                 quo(actor_sex), "actee", "M") %>%
     dplyr::group_by(grp, sname) %>%
