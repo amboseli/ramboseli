@@ -46,8 +46,8 @@ agonism_l <- subset_agonism(babase, members_l)
 iyol <- make_iyol(babase, members_l, focals_l, grooming_l)
 
 # Example of how to save / reload a data set
-# saveRDS(iyol, "data/iyol_2018-02-02.RDS")
-# iyol <- readRDS("data/iyol_2018-02-02.RDS")
+saveRDS(iyol, "data/iyol_2018-02-08.RDS")
+# iyol <- readRDS("data/iyol_2018-02-08.RDS")
 
 
 # calculate-dsi -----------------------------------------------------------
@@ -71,7 +71,7 @@ dsi_pop <- dsi(iyol_dsi, biograph_l, members_l, focals_l, females_l, grooming_l,
 
 # Example of how to save / reload a data set
 # saveRDS(dsi, "data/dsi_2018-02-02.RDS")
-saveRDS(dsi_pop, "data/dsi-pop_2018-02-02.RDS")
+saveRDS(dsi_pop, "data/dsi-pop_2018-02-08.RDS")
 # dsi <- readRDS("data/dsi_2018-02-02.RDS")
 # dsi_pop <- readRDS("data/dsi-pop_2018-02-02.RDS")
 
@@ -82,7 +82,7 @@ dsi_pop_summary <- dsi_summary(dsi_pop)
 
 # Example of how to save / reload a data set
 # saveRDS(dsi_summary, "data/dsi_summary_2018-02-02.RDS")
-saveRDS(dsi_pop_summary, "data/dsi-pop_summary_2018-02-02.RDS")
+saveRDS(dsi_pop_summary, "data/dsi-pop_summary_2018-02-08.RDS")
 # dsi_summary <- readRDS("data/dsi_summary_2018-02-02.RDS")
 # dsi_pop_summary <- readRDS("data/dsi-pop_summary_2018-02-02.RDS")
 
@@ -98,8 +98,8 @@ sci <- sci(iyol_sci, members_l, focals_l, females_l, grooming_l,
            min_res_days = 60, parallel = TRUE)
 
 # Example of how to save / reload a data set
-saveRDS(sci, "data/sci_2018-02-02.RDS")
-# sci <- readRDS("data/sci_2018-02-02.RDS")
+saveRDS(sci, "data/sci_2018-02-08.RDS")
+# sci <- readRDS("data/sci_2018-02-08.RDS")
 
 
 # calculate-agi -----------------------------------------------------------
