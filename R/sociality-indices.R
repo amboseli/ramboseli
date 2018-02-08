@@ -599,7 +599,7 @@ make_iyol <- function(babase, members_l, focals_l, grooming_l) {
   iyol <- iyol %>%
     dplyr::mutate(midpoint = start + floor((end - start) / 2),
                   age_start_yrs = (lubridate::interval(birth, start) %/% lubridate::days(1)) / 365.25,
-                  age_class = floor(plyr::round_any(age_start_yrs, 0.01)) + 1)
+                  age_class = floor(plyr::round_any(age_start_yrs, 0.005)) + 1)
 
   # NOTES:
   # Original scipt produces error in dates for RUT
