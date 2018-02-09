@@ -1106,8 +1106,8 @@ dsi_row_summary <- function(df) {
   # For females, this is calculated separately for top three male and female partners
   top_partners <- df %>%
     dplyr::filter(res_g_adj > -9999) %>%
+    dplyr::arrange(dyad_type, desc(res_g_adj)) %>%
     dplyr::group_by(dyad_type) %>%
-    dplyr::arrange(-res_g_adj) %>%
     dplyr::slice(1:3)
 
   # Relationship strength is the mean of the DSI for the top three partners
@@ -1645,7 +1645,7 @@ dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, in
     my_iyol$subset <- list(NULL)
     pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
     for (i in 1:nrow(my_iyol)) {
-      my_iyol[i, ]$subset <- list(get_dyadic_subset(my_iyol[i, ], biograph_l,
+      my_iyol[i, ]$subset <- list(get_dyadic_subset2(my_iyol[i, ], biograph_l,
                                                     members_l, focals_l, females_l,
                                                     interactions_l, min_cores_days,
                                                     within_grp, directional))
@@ -1655,7 +1655,7 @@ dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, in
   }
 
   my_iyol <- my_iyol %>%
-    dplyr::mutate(di = purrr::pmap(list(sname, grp, subset), get_focal_directed_index))
+    dplyr::mutate(di = purrr::pmap(list(sname, grp, subset), get_focal_index))
 
   tdiff <- (proc.time() - ptm)["elapsed"] / 60
   message(paste0("Elapsed time: ", round(tdiff, 3), " minutes (",
@@ -1859,13 +1859,12 @@ get_dyadic_subset2 <- function(df, biograph_l, members_l, focals_l, females_l,
       dplyr::mutate(i_adj = i_total / coresidence_days,
                     log2_i_adj = log2(i_adj))
 
-    # Classify dyads by dyad type ("F-F" or "F-M"), and nest by dyad type
+    # Classify dyads by dyad type ("F-F", "F-M", or "M-M"), and nest by dyad type
     my_subset <- my_subset %>%
       dplyr::rowwise() %>%
       dplyr::mutate(dyad = paste(sort(c(sname, partner)), collapse = '-'),
                     dyad_type = paste(sort(c(sname_sex, partner_sex)), collapse = '-')) %>%
       dplyr::ungroup() %>%
-      dplyr::filter(dyad_type != "M-M") %>%
       dplyr::group_by(dyad_type) %>%
       tidyr::nest()
 
@@ -1876,7 +1875,6 @@ get_dyadic_subset2 <- function(df, biograph_l, members_l, focals_l, females_l,
 
     # Reorganize columns
     my_subset <- my_subset %>%
-      dplyr::select(-coresidence_dates) %>%
       dplyr::select(sname, sname_sex, partner, partner_sex, everything()) %>%
       dplyr::arrange(sname, partner)
   }
@@ -1884,6 +1882,7 @@ get_dyadic_subset2 <- function(df, biograph_l, members_l, focals_l, females_l,
   # Behaviors for which direction needs to be preserved, e.g., agonism
   else {
 
+    # Duplicate each row to have one for sname->partner and one for partner->sname:
     sub_d1 <- my_subset %>%
       rename_at(vars(contains("partner")), funs(sub('partner', 'anim2', .))) %>%
       rename("anim1" = "sname", "anim1_grp" = "grp", "anim1_sex" = "sname_sex") %>%
@@ -1894,19 +1893,10 @@ get_dyadic_subset2 <- function(df, biograph_l, members_l, focals_l, females_l,
       rename("anim2" = "sname", "anim2_grp" = "grp", "anim2_sex" = "sname_sex") %>%
       select(contains("anim1"), contains("anim2"), everything())
 
+    # Combine the two sets
     my_subset <- bind_rows(sub_d1, sub_d2)
 
-    my_subset <- my_subset %>%
-      rowwise() %>%
-      mutate(i_type = paste(anim1_sex, anim2_sex, sep = '-')) %>%
-      ungroup()
-
-    ## Interactions between dyad during the period of interest
-    # Since grooming dates are 1st of month for many years, it does not work
-    # to restrict this to co-resident dates only. Instead, use start and end.
-    # Co-residence is (usually) implied by the interaction.
-    # i_given is behavior given by sname to partner
-    # i_received is behavior received by sname from partner
+    ## Obtain interactions directed by anim1 to anim2 during the period of interest
     my_subset <- my_subset %>%
       dplyr::mutate(i_dir = purrr::pmap_dbl(list(anim1, anim2, anim1_grp, anim2_grp),
                                               get_interactions))
@@ -1916,13 +1906,14 @@ get_dyadic_subset2 <- function(df, biograph_l, members_l, focals_l, females_l,
       dplyr::mutate(i_adj = i_dir / coresidence_days,
                     log2_i_adj = log2(i_adj))
 
-    # Classify dyads by dyad type ("F-F" or "F-M"), and nest by dyad type
+    # Directional dyad type: F-F, F-M, M-M, or M-F
+    # Nest by dyad type
     my_subset <- my_subset %>%
       dplyr::rowwise() %>%
-      dplyr::mutate(dyad = paste(sort(c(anim1, anim2)), collapse = '-'),
-                    dyad_type = paste(sort(c(anim1_sex, anim2_sex)), collapse = '-')) %>%
+      dplyr::mutate(dyad = paste(anim1, anim2, sep = '-'),
+                    dyad_type = paste(anim1_sex, anim2_sex, sep = '-')) %>%
       dplyr::ungroup() %>%
-      dplyr::group_by(i_type) %>%
+      dplyr::group_by(dyad_type) %>%
       tidyr::nest()
 
     # Fit regression separately for the different dyad types and get residuals
@@ -1983,7 +1974,7 @@ fit_dyadic_regression <- function(df) {
 #' @return The input data with an additional list column containing the dyadic variables.
 #'
 #' @examples
-get_focal_directed_index <- function(my_sname, my_grp, my_subset) {
+get_focal_index <- function(my_sname, my_grp, my_subset) {
 
   # Return an empty tibble if the subset is empty
   if (nrow(my_subset) == 0) {
@@ -1994,13 +1985,13 @@ get_focal_directed_index <- function(my_sname, my_grp, my_subset) {
   # This represents all dyads of a given type in the group during the year
   # NOT including the "zero-interaction" values set to -Inf
   percs <- my_subset %>%
-    dplyr::group_by(i_type) %>%
-    dplyr::filter(i_dir > 0) %>%
+    dplyr::group_by(dyad_type) %>%
+    dplyr::filter(i_adj > 0) %>%
     dplyr::summarise(perc_50 = quantile(res_i_adj, probs = 0.5),
                      perc_90 = quantile(res_i_adj, probs = 0.9))
 
   # Add percentile columns to my_subset
-  my_subset <- dplyr::left_join(my_subset, percs, by = "i_type")
+  my_subset <- dplyr::left_join(my_subset, percs, by = "dyad_type")
 
   # The focal subset should contain only dyads that include my_sname
   # This can be in either the sname or partner column
