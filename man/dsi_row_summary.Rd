@@ -2,20 +2,32 @@
 % Please edit documentation in R/sociality-indices.R
 \name{dsi_row_summary}
 \alias{dsi_row_summary}
+\alias{dsi_row_summary}
 \title{Summarize a single DSI subset.
 Calculate top partners, bond quantity, bond strength, and bond reciprocity
 for each individual-year-of-life separately for the focal animal's top 3
 grooming partners, separately for F-M and F-F dyads (if applicable)}
 \usage{
 dsi_row_summary(df)
+
+dsi_row_summary(df)
 }
 \arguments{
+\item{df}{A DSI subset}
+
 \item{df}{A DSI subset}
 }
 \value{
 The input data with additional list columns.
+
+The input data with additional list columns.
 }
 \description{
+Summarize a single DSI subset.
+Calculate top partners, bond quantity, bond strength, and bond reciprocity
+for each individual-year-of-life separately for the focal animal's top 3
+grooming partners, separately for F-M and F-F dyads (if applicable)
+
 Summarize a single DSI subset.
 Calculate top partners, bond quantity, bond strength, and bond reciprocity
 for each individual-year-of-life separately for the focal animal's top 3
