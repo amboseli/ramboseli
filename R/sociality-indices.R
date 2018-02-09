@@ -2006,3 +2006,141 @@ get_focal_index <- function(my_sname, my_grp, my_subset) {
 
   return(focal_di)
 }
+
+
+#' Create summary data from dyadic index input
+#'
+#' @param df Dyadic index input data produced by the 'dyadic_index' function.
+#'
+#' @return An individual-year-of-life data set with summarized dyadic variables.
+#' @export
+#'
+#' @examples
+dyadic_index_summary <- function(df) {
+
+  # Return an empty tibble if the subset is empty
+  if (is.null(df) |
+      !all(names(df) %in% c("sname", "grp", "start", "end", "days_present", "sex",
+                            "birth", "first_start_date", "statdate", "birth_dates",
+                            "midpoint", "age_start_yrs", "age_class", "subset", "di"))) {
+    stop("Problem with input data. Use the 'dsi' function to create the input.")
+  }
+
+  df$di_sum <- list(NULL)
+  pb <- txtProgressBar(min = 0, max = nrow(df), style = 3) # Progress bar
+  for (i in 1:nrow(df)) {
+    df[i, ]$di_sum <- list(di_row_summary(df$di[[i]]))
+    setTxtProgressBar(pb, i)
+  }
+  close(pb)
+
+  df <- df %>%
+    dplyr::select(-subset, -di) %>%
+    tidyr::unnest()
+
+  di_strength <- df %>%
+    select(-top_partners, -r_quantity, -r_reciprocity) %>%
+    unnest() %>%
+    select(-n)
+
+  di_strength <- di_strength %>%
+    mutate(DSI_type = case_when(
+      sex == "M" & dyad_type == "F-M" ~ "DSI_F",
+      sex == "F" & dyad_type == "F-M" ~ "DSI_M",
+      sex == "F" & dyad_type == "F-F" ~ "DSI_F"),
+      sex = fct_recode(sex, Male = "M", Female = "F")) %>%
+    select(-dyad_type) %>%
+    spread(DSI_type, r_strength) %>%
+    select(sname, grp, start, end, DSI_F, DSI_M)
+
+  di_quantity <- df %>%
+    select(-top_partners, -r_strength, -r_reciprocity) %>%
+    unnest() %>%
+    mutate(DSI_type = case_when(
+      sex == "M" & dyad_type == "F-M" ~ "F",
+      sex == "F" & dyad_type == "F-M" ~ "M",
+      sex == "F" & dyad_type == "F-F" ~ "F"),
+      sex = fct_recode(sex, Male = "M", Female = "F")) %>%
+    select(-dyad_type) %>%
+    gather(bond_cat, n_bonds, contains("Bonded")) %>%
+    unite(var, bond_cat, DSI_type) %>%
+    spread(var, n_bonds, fill = 0) %>%
+    select(sname, grp, start, end, ends_with("_M"), ends_with("_F"))
+
+  di_recip <- df %>%
+    select(-top_partners, -r_quantity, -r_strength) %>%
+    unnest() %>%
+    select(-n)
+
+  di_recip <- di_recip %>%
+    mutate(DSI_type = case_when(
+      sex == "M" & dyad_type == "F-M" ~ "recip_F",
+      sex == "F" & dyad_type == "F-M" ~ "recip_M",
+      sex == "F" & dyad_type == "F-F" ~ "recip_F"),
+      sex = fct_recode(sex, Male = "M", Female = "F")) %>%
+    select(-dyad_type) %>%
+    spread(DSI_type, r_reciprocity) %>%
+    select(sname, grp, start, end, recip_F, recip_M)
+
+  di_summary <- df %>%
+    select(-top_partners, -starts_with("r_")) %>%
+    left_join(di_strength, by = c("sname", "grp", "start", "end")) %>%
+    left_join(di_quantity, by = c("sname", "grp", "start", "end")) %>%
+    left_join(di_recip, by = c("sname", "grp", "start", "end"))
+
+  return(di_summary)
+}
+
+
+#' Summarize a single DSI subset.
+#' Calculate top partners, bond quantity, bond strength, and bond reciprocity
+#' for each individual-year-of-life separately for the focal animal's top 3
+#' grooming partners, separately for F-M and F-F dyads (if applicable)
+#'
+#' @param df A DSI subset
+#'
+#' @return The input data with additional list columns.
+#'
+#' @examples
+dyadic_row_summary <- function(df) {
+
+  # Return an empty tibble if the subset is empty
+  if (nrow(df) == 0) {
+    return(dplyr::tbl_df(NULL))
+  }
+
+  # Relationship quantity is the number of bonds in each bond-strength category
+  r_quantity <- df %>%
+    dplyr::group_by(dyad_type) %>%
+    dplyr::count(bond_strength) %>%
+    tidyr::spread(bond_strength, n)
+
+  # Top partners are the top three interaction partners
+  # This is calculated separately for each dyad type
+  top_partners <- df %>%
+    dplyr::filter(res_i_adj > -9999) %>%
+    dplyr::arrange(dyad_type, desc(res_i_adj)) %>%
+    dplyr::group_by(dyad_type) %>%
+    dplyr::slice(1:3)
+
+  # Relationship strength is the mean of the index value for the top three partners
+  r_strength <- top_partners %>%
+    dplyr::filter(res_i_adj > -9999) %>%
+    dplyr::group_by(dyad_type) %>%
+    dplyr::summarise(r_strength = mean(res_i_adj, na.rm = TRUE),
+                     n = n())
+
+  # Reciprocity is the mean of interaction asymmetry for the top three partners
+  r_reciprocity <- top_partners %>%
+    dplyr::mutate(recip = 1 - abs((g_given - g_received) / (g_given + g_received))) %>%
+    dplyr::group_by(dyad_type) %>%
+    dplyr::summarise(r_reciprocity = mean(recip, na.rm = TRUE),
+                     n = n())
+
+  res <- tibble(top_partners = list(top_partners),
+                r_quantity = list(r_quantity),
+                r_strength = list(r_strength),
+                r_reciprocity = list(r_reciprocity))
+
+  return(res)
+}
