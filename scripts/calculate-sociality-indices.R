@@ -118,3 +118,18 @@ agi <- agi(iyol_agi, members_l, focals_l, females_l, agonism_a,
 # Example of how to save / reload a data set
 saveRDS(agi, "data/agi_2018-02-07.RDS")
 # agi <- readRDS("data/agi_2018-02-07.RDS")
+
+
+# directed-sci ------------------------------------------------------------
+
+iyol_sci <- iyol %>%
+  filter(days_present >= 60)
+
+# Calculate AGI subset for each row of data
+# Warning: takes ~50 minutes!!!!
+sci_dir <- agi(iyol_sci, members_l, focals_l, females_l, grooming_l,
+           min_res_days = 60, parallel = TRUE)
+
+# Example of how to save / reload a data set
+saveRDS(sci_dir, "data/sci-dir_2018-02-08.RDS")
+# sci_dir <- readRDS("data/sci-dir_2018-02-08.RDS")
