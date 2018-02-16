@@ -58,7 +58,7 @@ subset_members <- function(babase) {
     dplyr::select(grp, sname, date, sex, matured, ranked) %>%
     dplyr::collect()
 
-  message("Dealing with grooming on first-of-month issue...")
+  message("Dealing with first-of-month issue...")
 
   # Second part
   members_remove <- members %>%
@@ -92,7 +92,7 @@ subset_members <- function(babase) {
     dplyr::group_by(sname, yearmon) %>%
     dplyr::mutate(yearmon_num_grp = n_distinct(grp))
 
-  ## Check in what group an individual lives in  on the first of the month.
+  ## Check in what group an individual lives in on the first of the month.
   members_l <- members_l %>%
     dplyr::ungroup() %>%
     dplyr::inner_join(dplyr::select(members_remove, first_of_month_grp = grp, sname, yearmon),
@@ -228,6 +228,206 @@ subset_females <- function(members_l) {
 #' @export
 #'
 #' @examples
+subset_interactions <- function(babase, members_l, my_acts = NULL) {
+
+  if (class(babase) != "PostgreSQLConnection") {
+    stop("Invalid connection to babase.")
+  }
+
+
+  # verify-acts -------------------------------------------------------------
+
+  # Get acts table, trim "act" column, which currently includes spaces
+  acts_l <- dplyr::tbl(babase, "acts") %>%
+    dplyr::collect() %>%
+    dplyr::mutate(act = stringr::str_trim(act))
+
+  all_acts <- acts_l$act
+
+  # Exit with error if user specifies an act that doesn't exist.
+  if (!all(my_acts %in% all_acts)) {
+    stop(paste0("Unrecognized acts: ",
+                paste(my_acts[!my_acts %in% all_acts], collapse = ", "),
+                "."))
+  }
+
+  my_classes <- acts_l %>%
+    dplyr::filter(act %in% my_acts) %>%
+    dplyr::pull(class) %>%
+    unique()
+
+  # Check if the acts chosen by the user all belong to one kind of behavior
+  # E.g., just grooming or just agonism
+  # Warn (but don't exit) if behavior classes are mixed
+  if (length(my_classes) > 1) {
+    warning("Interactions include different classes of behavior. Output might be nonsensical!")
+  }
+
+
+  # babase-tables -----------------------------------------------------------
+
+  message("Creating connections to babase tables...")
+
+  # Database connections
+  biograph <- dplyr::tbl(babase, "biograph")
+  maturedates <- dplyr::tbl(babase, "maturedates")
+  actor_actees <- dplyr::tbl(babase, "actor_actees")
+  rankdates <- dplyr::tbl(babase, "rankdates")
+
+  # Local
+  maturedates_l <- dplyr::collect(maturedates)
+  rankdates_l <- dplyr::collect(rankdates)
+
+# interactions-query ------------------------------------------------------
+
+  message("Obtaining and validating interaction data...")
+
+  inter <- actor_actees %>%
+    dplyr::mutate(act = TRIM(act)) %>%
+    dplyr::inner_join(dplyr::select(biograph, sname, actor_sex = sex),
+                      by = c("actor" = "sname")) %>%
+    dplyr::inner_join(dplyr::select(biograph, sname, actee_sex = sex),
+                      by = c("actee" = "sname")) %>%
+    dplyr::filter(act %in% my_acts & actee_grp != 1.3 & actee_grp != 1.4 &
+                    (actee_grp < 3 | actee_grp == 9) &
+                    actor_grp != 1.3 & actor_grp != 1.4 & (actor_grp < 3 | actor_grp == 9)) %>%
+    dplyr::collect()
+
+  inter <- inter %>%
+    dplyr::left_join(dplyr::select(maturedates_l, sname, actor_matured = matured),
+                     by = c("actor" = "sname")) %>%
+    dplyr::left_join(dplyr::select(maturedates_l, sname, actee_matured = matured),
+                     by = c("actee" = "sname")) %>%
+    dplyr::left_join(dplyr::select(rankdates_l, sname, actor_ranked = ranked),
+                     by = c("actor" = "sname")) %>%
+    dplyr::left_join(dplyr::select(rankdates_l, sname, actee_ranked = ranked),
+                     by = c("actee" = "sname"))
+
+  inter <- inter %>%
+    dplyr::filter(((actor_sex == "F" & date >= actor_matured) |
+                     (actor_sex == "M" & date >= actor_ranked)) &
+                    ((actee_sex == "F" & date >= actee_matured) |
+                       (actee_sex == "M" & date >= actee_ranked)))
+
+
+  inter$yearmon <- as.character(zoo::as.yearmon(inter$date))
+
+  inter <- inter %>%
+    dplyr::select(iid, sid, act, actor, actee, actor_sex, actee_sex, date,
+                  yearmon, actor_grp, actee_grp)
+
+  # If user requested grooming data, deal with first-of-month issue
+
+  if (my_acts == "G") {
+
+    message("Dealing with grooming on first-of-month issue...")
+
+    # grooming-data-manip -----------------------------------------------------
+
+    ## Check grooming data for potential issues with 1st of month issue
+    ## This problem is being fixed and this code will no longer be needed once the historic grooming data has been solved.
+    ## Yearmon are unique year and month combinations, e.g. MAR2000 or APR2012
+    ## The check is done per sname and yearmon combination.
+
+    ## Potential issues in the grooming interactions are all grooming that took place prior to Jul 2006.
+    potential_issues <- members_l %>%
+      dplyr::filter(first_of_month_grp != grp & date < '2006-07-01')
+
+    ## There is no issue if an individual is only present in 1 group for the whole month as 1st of the month group will be the same as the whole month group
+    ## There is also no issue if an individual is present in 1 monitored group (<3) and one observed group, because grooming is only recorded in certain groups.
+    no_issue_sname_yearmon <- potential_issues %>%
+      dplyr::filter(first_of_month_grp > 8.9 & yearmon_num_grp == 2) %>%
+      dplyr::mutate(grp = suppressWarnings(as.numeric(grps))) %>%
+      dplyr::select(sname, yearmon, grp) %>%
+      dplyr::distinct(sname, yearmon, grp)
+
+    ## There is an issue if an indvidual is in more than two monitored groups.
+    issue_sname_yearmon <- potential_issues %>%
+      dplyr::filter((first_of_month_grp > 8.9 & yearmon_num_grp > 2) |
+                      (first_of_month_grp < 9 & yearmon_num_grp > 1)) %>%
+      dplyr::mutate(grp = suppressWarnings(as.numeric(grps))) %>%
+      dplyr::select(sname, yearmon, grp) %>%
+      dplyr::distinct(sname, yearmon, grp)
+
+    no_issue_actor <- no_issue_sname_yearmon %>%
+      dplyr::rename(actor = sname, no_issue_actor_grp = grp)
+    no_issue_actee <- no_issue_sname_yearmon %>%
+      dplyr::rename(actee = sname, no_issue_actee_grp = grp)
+    issue_actor <- issue_sname_yearmon %>%
+      dplyr::rename(actor = sname, issue_actor_grp = grp)
+    issue_actee <- issue_sname_yearmon %>%
+      dplyr::rename(actee = sname, issue_actee_grp = grp)
+
+    issue_actor$flag_issue_actor <- 1
+    issue_actee$flag_issue_actee <- 1
+    no_issue_actor$flag_no_issue_actor <- 1
+    no_issue_actee$flag_no_issue_actee <- 1
+
+    grooming_l <- inter %>%
+      dplyr::left_join(no_issue_actor, by = c("actor", "yearmon")) %>%
+      dplyr::left_join(no_issue_actee, by = c("actee", "yearmon")) %>%
+      dplyr::left_join(issue_actor, by = c("actor", "yearmon")) %>%
+      dplyr::left_join(issue_actee, by = c("actee", "yearmon"))
+
+    grooming_l <- grooming_l %>%
+      dplyr::mutate(actor_grp = dplyr::case_when(
+        (is.na(flag_no_issue_actor) & is.na(flag_issue_actor) & actor_grp > 3) ~ actee_grp,
+        (is.na(flag_no_issue_actor) & is.na(flag_issue_actor)) ~ actor_grp,
+        !is.na(flag_no_issue_actor) ~ no_issue_actor_grp,
+        (is.na(flag_no_issue_actor) & !is.na(flag_issue_actor) &
+           is.na(flag_no_issue_actee) & is.na(flag_issue_actee)) ~ actee_grp,
+        (is.na(flag_no_issue_actor) & !is.na(flag_issue_actor) &
+           !is.na(flag_no_issue_actee)) ~ no_issue_actee_grp,
+        (is.na(flag_no_issue_actor) & !is.na(flag_issue_actor) &
+           !is.na(flag_issue_actee)) ~ 991,
+        TRUE ~ 992
+      ))
+
+    grooming_l <- grooming_l %>%
+      dplyr::mutate(actee_grp = dplyr::case_when(
+        (is.na(flag_no_issue_actee) & is.na(flag_issue_actee) & actee_grp > 3) ~ actor_grp,
+        (is.na(flag_no_issue_actee) & is.na(flag_issue_actee)) ~ actee_grp,
+        !is.na(flag_no_issue_actee) ~ no_issue_actee_grp,
+        (is.na(flag_no_issue_actee) & !is.na(flag_issue_actee) &
+           is.na(flag_no_issue_actor) & is.na(flag_issue_actor)) ~ actor_grp,
+        (is.na(flag_no_issue_actee) & !is.na(flag_issue_actee) &
+           !is.na(flag_no_issue_actor)) ~ no_issue_actor_grp,
+        (is.na(flag_no_issue_actee) & !is.na(flag_issue_actee) &
+           !is.na(flag_issue_actor)) ~ 993,
+        TRUE ~ 994
+      ))
+
+    inter <- grooming_l
+  }
+
+  ## Restrict the grooming data to the same data restrictions of members
+  grp_dates <- dplyr::distinct(members_l, grp, date)
+
+  temp1 <- inter %>%
+    dplyr::inner_join(grp_dates, by = c("date", "actee_grp" = "grp"))
+
+  temp2 <- inter %>%
+    dplyr::inner_join(grp_dates, by = c("date", "actor_grp" = "grp"))
+
+  inter <- dplyr::bind_rows(temp1, temp2) %>%
+    dplyr::distinct(iid, .keep_all = TRUE)
+
+  # NOTE: Duplicated rows not removed in original code
+
+  return(inter)
+
+}
+
+
+#' Obtain a subset of grooming data that excludes behavioral observation gaps.
+#'
+#' @param babase A DBI connection to the babase database
+#' @param members_l A subset of members table produced by the function 'subset_members'
+#'
+#' @return A subset of grooming data that excludes behavioral observation gaps.
+#' @export
+#'
+#' @examples
 subset_grooming <- function(babase, members_l) {
 
   if (class(babase) != "PostgreSQLConnection") {
@@ -288,7 +488,7 @@ subset_grooming <- function(babase, members_l) {
   # grooming-data-manip -----------------------------------------------------
 
   ## Check grooming data for potential issues with 1st of month issue
-  ## This problem is being fixed and this code will no longer be needed oncees the historic grooming data has been solved.
+  ## This problem is being fixed and this code will no longer be needed once the historic grooming data has been solved.
   ## Yearmon are unique year and month combinations, e.g. MAR2000 or APR2012
   ## The check is done per sname and yearmon combination.
 
@@ -296,7 +496,7 @@ subset_grooming <- function(babase, members_l) {
   potential_issues <- members_l %>%
     dplyr::filter(first_of_month_grp != grp & date < '2006-07-01')
 
-  ## There is no issue if an individual is only present in 1 group for the whole months as 1st of the month group will be the same as the whole month group
+  ## There is no issue if an individual is only present in 1 group for the whole month as 1st of the month group will be the same as the whole month group
   ## There is also no issue if an individual is present in 1 monitored group (<3) and one observed group, because grooming is only recorded in certain groups.
   no_issue_sname_yearmon <- potential_issues %>%
     dplyr::filter(first_of_month_grp > 8.9 & yearmon_num_grp == 2) %>%
