@@ -60,21 +60,20 @@ iyol_sub <- iyol %>%
 
 # Calculate population-level DSI subset for each row of data
 # Warning: takes up to 30 hours!!!!
-# Faster if run using parallel computation, but speed will depend on number of cores
-# The option for parallel processing seems finicky and might not work on your computer
+# Faster if run using parallel, but speed will depend on number of cores
+# The option for parallel processing seems finicky
 # If you're getting errors, try setting parallel to FALSE
-dsi_pop <- dsi(iyol_sub, biograph_l, members_l, focals_l, females_l, grooming_l,
-               min_cores_days = 60, within_grp = FALSE, parallel = TRUE)
+dsi_pop <- dyadic_index(iyol_sub, biograph_l, members_l, focals_l, females_l,
+                        grooming_l, min_cores_days = 60, within_grp = FALSE,
+                        parallel = TRUE, directional = FALSE)
 
 # Example of how to save / reload a data set
 saveRDS(dsi_pop, "data/dsi-pop_2018-02-15.RDS")
 # dsi_pop <- readRDS("data/dsi-pop_2018-02-15.RDS")
 
 # Summarize DSI variables for top partners in each year of life
-# Takes about 3 or 4 minutes
-dsi_pop_summary <- dsi_summary(dsi_pop)
+dsi_pop_summary <- dyadic_index_summary(dsi_pop)
 
-# Example of how to save / reload a data set
 saveRDS(dsi_pop_summary, "data/dsi-pop_summary_2018-02-15.RDS")
 # dsi_pop_summary <- readRDS("data/dsi-pop_summary_2018-02-15.RDS")
 
@@ -82,11 +81,9 @@ saveRDS(dsi_pop_summary, "data/dsi-pop_summary_2018-02-15.RDS")
 # calculate-sci -----------------------------------------------------------
 
 # Calculate SCI subset for each row of data
-# Warning: takes ~50 minutes!!!!
 sci <- sci(iyol_sub, members_l, focals_l, females_l, grooming_l,
            min_res_days = 60, parallel = TRUE)
 
-# Example of how to save / reload a data set
 saveRDS(sci, "data/sci_2018-02-15.RDS")
 # sci <- readRDS("data/sci_2018-02-15.RDS")
 
@@ -100,7 +97,6 @@ agi <- sci(iyol_sub, members_l, focals_l, females_l, agonism_l,
 
 names(agi) <- str_replace(names(agi), pattern = "SCI_", replacement = "AGI_")
 
-# Example of how to save / reload a data set
 saveRDS(agi, "data/agi_2018-02-15.RDS")
 # agi <- readRDS("data/agi_2018-02-15.RDS")
 
@@ -112,6 +108,5 @@ saveRDS(agi, "data/agi_2018-02-15.RDS")
 sci_dir <- sci(iyol_sub, members_l, focals_l, females_l, grooming_l,
            min_res_days = 60, parallel = TRUE, directional = TRUE)
 
-# Example of how to save / reload a data set
 saveRDS(sci_dir, "data/sci-dir_2018-02-15.RDS")
 # sci_dir <- readRDS("data/sci-dir_2018-02-15.RDS")
