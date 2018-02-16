@@ -2,10 +2,10 @@
 % Please edit documentation in R/sociality-indices.R
 \name{get_dyadic_subset}
 \alias{get_dyadic_subset}
-\title{Obtain dyadic grooming subsets for the animal's year of life}
+\title{Obtain dyadic interaction subsets for the animal's year of life}
 \usage{
-get_dyadic_subset(df, biograph_l, members_l, focals_l, females_l, grooming_l,
-  min_cores_days = 60, within_grp = FALSE)
+get_dyadic_subset(df, biograph_l, members_l, focals_l, females_l,
+  interactions_l, min_cores_days, within_grp, directional)
 }
 \arguments{
 \item{df}{One row individual-year-of-life data}
@@ -18,15 +18,17 @@ get_dyadic_subset(df, biograph_l, members_l, focals_l, females_l, grooming_l,
 
 \item{females_l}{A subset of female counts produced by the function 'subset_females'}
 
-\item{grooming_l}{A subset of grooming data produced by the function 'subset_grooming'}
+\item{interactions_l}{A subset of interaction data}
 
 \item{min_cores_days}{The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.}
 
 \item{within_grp}{Logical value indicating whether regressions should be fit relative to dyads in entire population (default) or to dyads within-group}
+
+\item{directional}{Logical value indicating whether to preserve directionality}
 }
 \value{
 The input row with an additional list column containing the subset
 }
 \description{
-Obtain dyadic grooming subsets for the animal's year of life
+Obtain dyadic interaction subsets for the animal's year of life
 }

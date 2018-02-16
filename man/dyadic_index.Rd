@@ -23,6 +23,12 @@ dyadic_index(my_iyol, biograph_l, members_l, focals_l, females_l,
 
 \item{within_grp}{Logical value indicating whether regressions should be fit relative to dyads in entire population (default) or to dyads within-group}
 
+\item{parallel}{Logical value indicating whether to process in parallel}
+
+\item{ncores}{Integer value indicating how many cores to use in parallel processing}
+
+\item{directional}{Logical value indicating whether to preserve directionality}
+
 \item{agonism_l}{A subset of agonism data produced by the function 'subset_agonism'}
 }
 \value{

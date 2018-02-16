@@ -4,7 +4,7 @@
 \alias{make_iyol}
 \title{Create a data frame for each adult individual year of life}
 \usage{
-make_iyol(babase, members_l, focals_l, grooming_l)
+make_iyol(babase, members_l, focals_l, interactions_l)
 }
 \arguments{
 \item{babase}{A DBI connection to the babase database}
@@ -13,7 +13,7 @@ make_iyol(babase, members_l, focals_l, grooming_l)
 
 \item{focals_l}{A subset of focals produced by the function 'subset_focals'}
 
-\item{grooming_l}{A subset of grooming data produced by the function 'subset_grooming'}
+\item{interactions_l}{A subset of interaction data produced by the function 'subset_interactions'}
 }
 \value{
 A tibble with one row per animal and year of life, with contextual data
