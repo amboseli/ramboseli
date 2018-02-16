@@ -2,10 +2,11 @@
 % Please edit documentation in R/sociality-indices.R
 \name{sci}
 \alias{sci}
-\title{Calculate SCI variables from individual-year-of-life data}
+\title{Calculate Social Connectedness Index variables from individual-year-of-life data}
 \usage{
-sci(my_iyol, members_l, focals_l, females_l, grooming_l, min_res_days = 60,
-  parallel = FALSE, ncores = NULL)
+sci(my_iyol, members_l, focals_l, females_l, interactions_l,
+  min_res_days = 60, parallel = FALSE, ncores = NULL,
+  directional = FALSE)
 }
 \arguments{
 \item{my_iyol}{Individual-year-of-life data.}
@@ -16,13 +17,19 @@ sci(my_iyol, members_l, focals_l, females_l, grooming_l, min_res_days = 60,
 
 \item{females_l}{A subset of female counts produced by the function 'subset_females'}
 
-\item{grooming_l}{A subset of grooming data produced by the function 'subset_grooming'}
+\item{interactions_l}{A subset of interactions data produced by the function 'subset_interactions'}
 
 \item{min_res_days}{The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.}
+
+\item{parallel}{Logical value indicating whether to process in parallel}
+
+\item{ncores}{Integer value indicating how many cores to use in parallel processing}
+
+\item{directional}{Logical value indicating whether to preserve directionality}
 }
 \value{
-The input data with an additional list columsn containing the full SCI subset and variables.
+The input data with an additional list columsn containing the full subset and variables.
 }
 \description{
-Calculate SCI variables from individual-year-of-life data
+Calculate Social Connectedness Index variables from individual-year-of-life data
 }

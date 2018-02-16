@@ -603,227 +603,21 @@ get_interaction_dates <- function(my_sub, members_l, df, my_sex_var, my_role, my
 }
 
 
-#' Obtain composite grooming subsets for the animal's year of life
+#' Obtain SCI subsets for the animal's year of life
 #'
 #' @param df One row individual-year-of-life data
 #' @param members_l A subset of members table produced by the function 'subset_members'
 #' @param focals_l A subset of focals produced by the function 'subset_focals'
 #' @param females_l A subset of female counts produced by the function 'subset_females'
-#' @param grooming_l A subset of grooming data produced by the function 'subset_grooming'
+#' @param interactions_l A subset of interactions data produced by the function 'subset_interactions'
 #' @param min_res_days The minimum number of residence days needed to be included. Defaults to 60 days.
+#' @param directional Logical value indicating whether to preserve directionality
 #'
 #' @return The input row with an additional list column containing the subset
 #'
 #' @examples
-get_sci_subset <- function(df, members_l, focals_l, females_l, grooming_l, min_res_days = 60) {
-
-  zero_daily_count <- 1/365.25
-  log_zero_daily_count <- log2(zero_daily_count)
-
-  my_subset <- members_l %>%
-    dplyr::inner_join(select(df, -sname, -grp), by = c("sex")) %>%
-    dplyr::filter(date >= start & date <= end) %>%
-    dplyr::group_by(sname, grp) %>%
-    dplyr::summarise(days_present = n(),
-                     start = min(date),
-                     end = max(date))
-
-  ## Focal counts
-  # Get all focals during relevant time period in grp
-  my_focals <- get_mem_dates(my_subset, members_l, focals_l, sel = quo(sum)) %>%
-    dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(n_focals = sum(sum))
-
-  ## Female counts
-  my_females <- get_mem_dates(my_subset, members_l, females_l, sel = quo(nr_females)) %>%
-    dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(mean_f_count = mean(nr_females))
-
-  # Join back to my_subset to add n_focals column
-  my_subset <- my_subset %>%
-    dplyr::left_join(my_focals, by = c("grp", "sname")) %>%
-    dplyr::left_join(my_females, by = c("grp", "sname"))
-
-  # Filter and calculate variables
-  my_subset <- my_subset %>%
-    dplyr::filter(days_present >= min_res_days & mean_f_count > 0) %>%
-    dplyr::mutate(OE = (n_focals / mean_f_count) / days_present,
-                  log2OE = log2(OE)) %>%
-    dplyr::filter(!is.na(OE))
-
-  ## Grooming given to females
-  gg_f <- get_interaction_dates(my_subset, members_l, grooming_l, quo(actee_sex), "actor", "F") %>%
-    dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(GtoF = n())
-
-  ## Grooming received from females
-  gr_f <- get_interaction_dates(my_subset, members_l, grooming_l, quo(actor_sex), "actee", "F") %>%
-    dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(GfromF = n())
-
-  my_subset <- my_subset %>%
-    dplyr::left_join(gg_f, by = c("grp", "sname")) %>%
-    dplyr::left_join(gr_f, by = c("grp", "sname"))
-
-  my_subset <- my_subset %>%
-    tidyr::replace_na(list(GtoF = 0, GfromF = 0))
-
-  # Calculate variables
-  my_subset <- my_subset %>%
-    dplyr::mutate(GtoF_daily = GtoF / days_present,
-                  log2GtoF_daily = dplyr::case_when(
-                    GtoF == 0 ~ log_zero_daily_count,
-                    TRUE ~ log2(GtoF_daily)),
-                  GfromF_daily = GfromF / days_present,
-                  log2GfromF_daily = dplyr::case_when(
-                    GfromF == 0 ~ log_zero_daily_count,
-                    TRUE ~ log2(GfromF_daily)))
-
-  my_subset$resGtoF <- as.numeric(residuals(lm(data = my_subset, log2GtoF_daily ~ log2OE)))
-  my_subset$resGfromF <- as.numeric(residuals(lm(data = my_subset, log2GfromF_daily ~ log2OE)))
-  my_subset$SCI_F <- (my_subset$resGtoF + my_subset$resGfromF) / 2
-
-  # Run for females only
-  if (df$sex == "F") {
-
-    ## Grooming given to males
-    gg_m <- get_interaction_dates(my_subset, members_l, grooming_l, quo(actee_sex), "actor", "M") %>%
-      dplyr::group_by(grp, sname) %>%
-      dplyr::summarise(GtoM = n())
-
-    ## Grooming received from males
-    gr_m <- get_interaction_dates(my_subset, members_l, grooming_l, quo(actor_sex), "actee", "M") %>%
-      dplyr::group_by(grp, sname) %>%
-      dplyr::summarise(GfromM = n())
-
-    my_subset <- my_subset %>%
-      dplyr::left_join(gg_m, by = c("grp", "sname")) %>%
-      dplyr::left_join(gr_m, by = c("grp", "sname"))
-
-    my_subset <- my_subset %>%
-      tidyr::replace_na(list(GtoM = 0, GfromM = 0))
-
-    # Calculate variables
-    my_subset <- my_subset %>%
-      dplyr::mutate(GtoM_daily = GtoM / days_present,
-                    log2GtoM_daily = dplyr::case_when(
-                      GtoM == 0 ~ log_zero_daily_count,
-                      TRUE ~ log2(GtoM_daily)),
-                    GfromM_daily = GfromM / days_present,
-                    log2GfromM_daily = dplyr::case_when(
-                      GfromM == 0 ~ log_zero_daily_count,
-                      TRUE ~ log2(GfromM_daily)))
-
-    my_subset$resGtoM <- as.numeric(residuals(lm(data = my_subset, log2GtoM_daily ~ log2OE)))
-    my_subset$resGfromM <- as.numeric(residuals(lm(data = my_subset, log2GfromM_daily ~ log2OE)))
-    my_subset$SCI_M <- (my_subset$resGtoM + my_subset$resGfromM) / 2
-  }
-
-  return(my_subset)
-}
-
-#' Calculate SCI variables from individual-year-of-life data
-#'
-#' @param my_iyol Individual-year-of-life data.
-#' @param members_l A subset of members table produced by the function 'subset_members'
-#' @param focals_l A subset of focals produced by the function 'subset_focals'
-#' @param females_l A subset of female counts produced by the function 'subset_females'
-#' @param grooming_l A subset of grooming data produced by the function 'subset_grooming'
-#' @param min_res_days The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.
-#'
-#' @return The input data with an additional list columsn containing the full SCI subset and variables.
-#' @export
-#'
-#' @examples
-sci <- function(my_iyol, members_l, focals_l, females_l, grooming_l,
-                min_res_days = 60, parallel = FALSE, ncores = NULL) {
-
-  ptm <- proc.time()
-
-  # Return an empty tibble if the subset is empty
-  if (is.null(my_iyol) |
-      !all(names(my_iyol) %in% c("sname", "grp", "start", "end", "days_present", "sex",
-                                 "birth", "first_start_date", "statdate", "birth_dates",
-                                 "midpoint", "age_start_yrs", "age_class")) |
-      min_res_days < 0) {
-    stop("Problem with input data. Use the 'make_iyol' function to create the input.")
-  }
-
-  if (parallel) {
-    avail_cores <- detectCores()
-    if (!is.null(ncores)) {
-      if (ncores > avail_cores) {
-        message(paste0("Ignoring 'ncores' argument because only ", avail_cores,
-                       " cores are available."))
-        ncores <- avail_cores
-      }
-    }
-    else {
-      message(paste0("Using all available cores: ", avail_cores,
-                     ". Use 'ncores' to specify number of cores to use."))
-      ncores <- avail_cores
-    }
-
-    cl <- makeCluster(ncores)
-    registerDoSNOW(cl)
-    pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3)
-    progress <- function(n) setTxtProgressBar(pb, n)
-    opts <- list(progress = progress)
-    subset <- foreach(i = 1:nrow(my_iyol), .options.snow = opts,
-                      .packages = c('tidyverse')) %dopar% {
-                        get_sci_subset(my_iyol[i, ], members_l, focals_l,
-                                       females_l, grooming_l, min_res_days)
-                      }
-    close(pb)
-    stopCluster(cl)
-    my_iyol <- add_column(my_iyol, subset)
-  }
-  else {
-    if (!is.null(ncores)) {
-      message("Ignoring 'ncores' argument because 'parallel' set to FALSE.")
-    }
-    my_iyol$subset <- list(NULL)
-    pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
-    for (i in 1:nrow(my_iyol)) {
-      my_iyol[i, ]$subset <- list(get_sci_subset(my_iyol[i, ], members_l,
-                                                 focals_l, females_l,
-                                                 grooming_l,
-                                                 min_res_days))
-      setTxtProgressBar(pb, i)
-      close(pb)
-    }
-  }
-
-  sci_focal <- my_iyol %>%
-    unnest() %>%
-    mutate(focal = (sname == sname1 & grp == grp1)) %>%
-    filter(focal) %>%
-    select(sname, grp, start, end, SCI_M, SCI_F)
-
-  res <- left_join(my_iyol, sci_focal, by = c("sname", "grp", "start", "end"))
-
-  tdiff <- (proc.time() - ptm)["elapsed"] / 60
-  message(paste0("Elapsed time: ", round(tdiff, 3), " minutes (",
-                 round(tdiff / 60, 3), ") hours."))
-
-  return(res)
-}
-
-
-#' Obtain composite agonism subsets for the animal's year of life
-#'
-#' @param df One row individual-year-of-life data
-#' @param members_l A subset of members table produced by the function 'subset_members'
-#' @param focals_l A subset of focals produced by the function 'subset_focals'
-#' @param females_l A subset of female counts produced by the function 'subset_females'
-#' @param agonism_l A subset of agonism data produced by the function 'subset_agonism'
-#' @param min_res_days The minimum number of residence days needed to be included. Defaults to 60 days.
-#'
-#' @return The input row with an additional list column containing the subset
-#' @export
-#'
-#' @examples
-get_agi_subset <- function(df, members_l, focals_l, females_l, agonism_l, min_res_days = 60) {
+get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
+                           min_res_days, directional) {
 
   zero_daily_count <- 1/365.25
   log_zero_daily_count <- log2(zero_daily_count)
@@ -860,81 +654,113 @@ get_agi_subset <- function(df, members_l, focals_l, females_l, agonism_l, min_re
                   log2OE = log2(OE)) %>%
     dplyr::filter(!is.na(OE))
 
-  ## Agonism given to females by each actor of focal's sex
-  gg_f <- get_interaction_dates(my_subset, members_l, agonism_l,
+  ## Interactions given to females by each actor of focal's sex
+  gg_f <- get_interaction_dates(my_subset, members_l, interactions_l,
                                 quo(actee_sex), "actor", "F") %>%
     dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(AtoF = n())
+    dplyr::summarise(ItoF = n())
 
-  ## Agonism received from females by each actee of focal's sex
-  gr_f <- get_interaction_dates(my_subset, members_l, agonism_l,
+  ## Interactions received from females by each actee of focal's sex
+  gr_f <- get_interaction_dates(my_subset, members_l, interactions_l,
                                 quo(actor_sex), "actee", "F") %>%
     dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(AfromF = n())
+    dplyr::summarise(IfromF = n())
 
-  ## Agonism given to males by each actor of focal's sex
-  gg_m <- get_interaction_dates(my_subset, members_l, agonism_l,
-                                quo(actee_sex), "actor", "M") %>%
-    dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(AtoM = n())
+  # Calculate variables for interactions with males only if:
+  # - the interactions are grooming AND the focal animal is female OR
+  # - the interactions are anything but grooming
+  include_males <- interactions_l$act[[1]] != "G" | (interactions_l$act[[1]] == "G" & df$sex == "F")
 
-  ## Agonism received from males by each actee of focal's sex
-  gr_m <- get_interaction_dates(my_subset, members_l, agonism_l,
-                                quo(actor_sex), "actee", "M") %>%
-    dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(AfromM = n())
+  if (include_males) {
+    ## Interactions given to males by each actor of focal's sex
+    gg_m <- get_interaction_dates(my_subset, members_l, interactions_l,
+                                  quo(actee_sex), "actor", "M") %>%
+      dplyr::group_by(grp, sname) %>%
+      dplyr::summarise(ItoM = n())
+
+    ## Interactions received from males by each actee of focal's sex
+    gr_m <- get_interaction_dates(my_subset, members_l, interactions_l,
+                                  quo(actor_sex), "actee", "M") %>%
+      dplyr::group_by(grp, sname) %>%
+      dplyr::summarise(IfromM = n())
+  }
 
   my_subset <- my_subset %>%
     dplyr::left_join(gg_f, by = c("grp", "sname")) %>%
-    dplyr::left_join(gr_f, by = c("grp", "sname")) %>%
-    dplyr::left_join(gg_m, by = c("grp", "sname")) %>%
-    dplyr::left_join(gr_m, by = c("grp", "sname"))
+    dplyr::left_join(gr_f, by = c("grp", "sname"))
 
   my_subset <- my_subset %>%
-    tidyr::replace_na(list(AtoF = 0, AfromF = 0, AtoM = 0, AfromM = 0))
+    tidyr::replace_na(list(ItoF = 0, IfromF = 0))
 
-  # Calculate variables
+  if (include_males) {
+    my_subset <- my_subset %>%
+      dplyr::left_join(gg_m, by = c("grp", "sname")) %>%
+      dplyr::left_join(gr_m, by = c("grp", "sname"))
+
+    my_subset <- my_subset %>%
+      tidyr::replace_na(list(ItoM = 0, IfromM = 0))
+  }
+
+  # Calculate variables, first for interactions with females only
   my_subset <- my_subset %>%
-    dplyr::mutate(AtoF_daily = AtoF / days_present,
-                  log2AtoF_daily = dplyr::case_when(
-                    AtoF == 0 ~ log_zero_daily_count,
-                    TRUE ~ log2(AtoF_daily)),
-                  AfromF_daily = AfromF / days_present,
-                  log2AfromF_daily = dplyr::case_when(
-                    AfromF == 0 ~ log_zero_daily_count,
-                    TRUE ~ log2(AfromF_daily)),
-                  AtoM_daily = AtoM / days_present,
-                  log2AtoM_daily = dplyr::case_when(
-                    AtoM == 0 ~ log_zero_daily_count,
-                    TRUE ~ log2(AtoM_daily)),
-                  AfromM_daily = AfromM / days_present,
-                  log2AfromM_daily = dplyr::case_when(
-                    AfromM == 0 ~ log_zero_daily_count,
-                    TRUE ~ log2(AfromM_daily)))
+    dplyr::mutate(ItoF_daily = ItoF / days_present,
+                  log2ItoF_daily = dplyr::case_when(
+                    ItoF == 0 ~ log_zero_daily_count,
+                    TRUE ~ log2(ItoF_daily)),
+                  IfromF_daily = IfromF / days_present,
+                  log2IfromF_daily = dplyr::case_when(
+                    IfromF == 0 ~ log_zero_daily_count,
+                    TRUE ~ log2(IfromF_daily)))
 
-  my_subset$AGI_F_Dir <- as.numeric(residuals(lm(data = my_subset, log2AtoF_daily ~ log2OE)))
-  my_subset$AGI_F_Rec <- as.numeric(residuals(lm(data = my_subset, log2AfromF_daily ~ log2OE)))
-  my_subset$AGI_M_Dir <- as.numeric(residuals(lm(data = my_subset, log2AtoM_daily ~ log2OE)))
-  my_subset$AGI_M_Rec <- as.numeric(residuals(lm(data = my_subset, log2AfromM_daily ~ log2OE)))
+  if (include_males) {
+    my_subset <- my_subset %>%
+      dplyr::mutate(ItoM_daily = ItoM / days_present,
+                    log2ItoM_daily = dplyr::case_when(
+                      ItoM == 0 ~ log_zero_daily_count,
+                      TRUE ~ log2(ItoM_daily)),
+                    IfromM_daily = IfromM / days_present,
+                    log2IfromM_daily = dplyr::case_when(
+                      IfromM == 0 ~ log_zero_daily_count,
+                      TRUE ~ log2(IfromM_daily)))
+  }
+
+  my_subset$SCI_F_Dir <- as.numeric(residuals(lm(data = my_subset, log2ItoF_daily ~ log2OE)))
+  my_subset$SCI_F_Rec <- as.numeric(residuals(lm(data = my_subset, log2IfromF_daily ~ log2OE)))
+
+  if (include_males) {
+    my_subset$SCI_M_Dir <- as.numeric(residuals(lm(data = my_subset, log2ItoM_daily ~ log2OE)))
+    my_subset$SCI_M_Rec <- as.numeric(residuals(lm(data = my_subset, log2IfromM_daily ~ log2OE)))
+  }
+
+  if (!directional) {
+    my_subset$SCI_F <- (my_subset$SCI_F_Dir + my_subset$SCI_F_Rec) / 2
+    if (include_males) {
+      my_subset$SCI_M <- (my_subset$SCI_M_Dir + my_subset$SCI_M_Rec) / 2
+    }
+  }
 
   return(my_subset)
 }
 
-#' Calculate AGI variables from individual-year-of-life data
+#' Calculate Social Connectedness Index variables from individual-year-of-life data
 #'
 #' @param my_iyol Individual-year-of-life data.
 #' @param members_l A subset of members table produced by the function 'subset_members'
 #' @param focals_l A subset of focals produced by the function 'subset_focals'
 #' @param females_l A subset of female counts produced by the function 'subset_females'
-#' @param agonism_l A subset of agonism data produced by the function 'subset_agonism'
+#' @param interactions_l A subset of interactions data produced by the function 'subset_interactions'
 #' @param min_res_days The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.
+#' @param parallel Logical value indicating whether to process in parallel
+#' @param ncores Integer value indicating how many cores to use in parallel processing
+#' @param directional Logical value indicating whether to preserve directionality
 #'
-#' @return The input data with an additional list columsn containing the full AGI subset and variables.
+#' @return The input data with an additional list columsn containing the full subset and variables.
 #' @export
 #'
 #' @examples
-agi <- function(my_iyol, members_l, focals_l, females_l, agonism_l,
-                min_res_days = 60, parallel = FALSE, ncores = NULL) {
+sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
+                min_res_days = 60, parallel = FALSE, ncores = NULL,
+                directional = FALSE) {
 
   ptm <- proc.time()
 
@@ -969,8 +795,9 @@ agi <- function(my_iyol, members_l, focals_l, females_l, agonism_l,
     opts <- list(progress = progress)
     subset <- foreach(i = 1:nrow(my_iyol), .options.snow = opts,
                       .packages = c('tidyverse')) %dopar% {
-                        get_agi_subset(my_iyol[i, ], members_l, focals_l,
-                                       females_l, agonism_l, min_res_days)
+                        get_sci_subset(my_iyol[i, ], members_l, focals_l,
+                                       females_l, interactions_l, min_res_days,
+                                       directional)
                       }
     close(pb)
     stopCluster(cl)
@@ -983,22 +810,24 @@ agi <- function(my_iyol, members_l, focals_l, females_l, agonism_l,
     my_iyol$subset <- list(NULL)
     pb <- txtProgressBar(min = 0, max = nrow(my_iyol), style = 3) # Progress bar
     for (i in 1:nrow(my_iyol)) {
-      my_iyol[i, ]$subset <- list(get_agi_subset(my_iyol[i, ], members_l,
+      my_iyol[i, ]$subset <- list(get_sci_subset(my_iyol[i, ], members_l,
                                                  focals_l, females_l,
-                                                 agonism_l,
-                                                 min_res_days))
+                                                 interactions_l, min_res_days,
+                                                 directional))
       setTxtProgressBar(pb, i)
       close(pb)
     }
   }
 
-  agi_focal <- my_iyol %>%
+  sci_focal <- my_iyol %>%
     unnest() %>%
     mutate(focal = (sname == sname1 & grp == grp1)) %>%
     filter(focal) %>%
-    select(sname, grp, start, end, AGI_F_Dir, AGI_F_Rec, AGI_M_Dir, AGI_M_Rec)
+    select(sname, grp, start, end, contains("SCI_"))
 
-  res <- left_join(my_iyol, agi_focal, by = c("sname", "grp", "start", "end"))
+  res <- left_join(my_iyol, sci_focal, by = c("sname", "grp", "start", "end"))
+
+  attr(res, "directional") <- directional
 
   tdiff <- (proc.time() - ptm)["elapsed"] / 60
   message(paste0("Elapsed time: ", round(tdiff, 3), " minutes (",
@@ -1006,6 +835,7 @@ agi <- function(my_iyol, members_l, focals_l, females_l, agonism_l,
 
   return(res)
 }
+
 
 #' Calculate dyadic index variables from individual-year-of-life data
 #'

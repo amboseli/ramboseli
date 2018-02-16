@@ -2,10 +2,10 @@
 % Please edit documentation in R/sociality-indices.R
 \name{get_sci_subset}
 \alias{get_sci_subset}
-\title{Obtain composite grooming subsets for the animal's year of life}
+\title{Obtain SCI subsets for the animal's year of life}
 \usage{
-get_sci_subset(df, members_l, focals_l, females_l, grooming_l,
-  min_res_days = 60)
+get_sci_subset(df, members_l, focals_l, females_l, interactions_l, min_res_days,
+  directional)
 }
 \arguments{
 \item{df}{One row individual-year-of-life data}
@@ -16,13 +16,15 @@ get_sci_subset(df, members_l, focals_l, females_l, grooming_l,
 
 \item{females_l}{A subset of female counts produced by the function 'subset_females'}
 
-\item{grooming_l}{A subset of grooming data produced by the function 'subset_grooming'}
+\item{interactions_l}{A subset of interactions data produced by the function 'subset_interactions'}
 
 \item{min_res_days}{The minimum number of residence days needed to be included. Defaults to 60 days.}
+
+\item{directional}{Logical value indicating whether to preserve directionality}
 }
 \value{
 The input row with an additional list column containing the subset
 }
 \description{
-Obtain composite grooming subsets for the animal's year of life
+Obtain SCI subsets for the animal's year of life
 }
