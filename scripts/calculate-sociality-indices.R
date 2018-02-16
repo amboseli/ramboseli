@@ -54,7 +54,7 @@ saveRDS(iyol, "data/iyol_2018-02-15.RDS")
 # calculate-dsi -----------------------------------------------------------
 
 ## Restrict to groups where the animal was present for at least 60 days
-iyol_dsi <- iyol %>%
+iyol_sub <- iyol %>%
   filter(days_present >= 60)
 
 
@@ -63,7 +63,7 @@ iyol_dsi <- iyol %>%
 # Faster if run using parallel computation, but speed will depend on number of cores
 # The option for parallel processing seems finicky and might not work on your computer
 # If you're getting errors, try setting parallel to FALSE
-dsi_pop <- dsi(iyol_dsi, biograph_l, members_l, focals_l, females_l, grooming_l,
+dsi_pop <- dsi(iyol_sub, biograph_l, members_l, focals_l, females_l, grooming_l,
                min_cores_days = 60, within_grp = FALSE, parallel = TRUE)
 
 # Example of how to save / reload a data set
@@ -81,12 +81,9 @@ saveRDS(dsi_pop_summary, "data/dsi-pop_summary_2018-02-15.RDS")
 
 # calculate-sci -----------------------------------------------------------
 
-iyol_sci <- iyol %>%
-  filter(days_present >= 60)
-
 # Calculate SCI subset for each row of data
 # Warning: takes ~50 minutes!!!!
-sci <- sci(iyol_sci, members_l, focals_l, females_l, grooming_l,
+sci <- sci(iyol_sub, members_l, focals_l, females_l, grooming_l,
            min_res_days = 60, parallel = TRUE)
 
 # Example of how to save / reload a data set
@@ -96,14 +93,12 @@ saveRDS(sci, "data/sci_2018-02-15.RDS")
 
 # calculate-agi -----------------------------------------------------------
 
-## Restrict to groups where the animal was present for at least 60 days
-iyol_agi <- iyol %>%
-  filter(days_present >= 60)
-
 # Calculate AGI subset for each row of data
 # Warning: takes ~50 minutes!!!!
-agi <- sci(iyol_agi, members_l, focals_l, females_l, agonism_l,
+agi <- sci(iyol_sub, members_l, focals_l, females_l, agonism_l,
            min_res_days = 60, parallel = TRUE, directional = TRUE)
+
+names(agi) <- str_replace(names(agi), pattern = "SCI_", replacement = "AGI_")
 
 # Example of how to save / reload a data set
 saveRDS(agi, "data/agi_2018-02-15.RDS")
@@ -112,12 +107,9 @@ saveRDS(agi, "data/agi_2018-02-15.RDS")
 
 # directed-sci ------------------------------------------------------------
 
-iyol_sci <- iyol %>%
-  filter(days_present >= 60)
-
 # Calculate AGI subset for each row of data
 # Warning: takes ~50 minutes!!!!
-sci_dir <- sci(iyol_sci, members_l, focals_l, females_l, grooming_l,
+sci_dir <- sci(iyol_sub, members_l, focals_l, females_l, grooming_l,
            min_res_days = 60, parallel = TRUE, directional = TRUE)
 
 # Example of how to save / reload a data set
