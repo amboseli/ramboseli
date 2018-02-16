@@ -58,7 +58,7 @@ subset_members <- function(babase) {
     dplyr::select(grp, sname, date, sex, matured, ranked) %>%
     dplyr::collect()
 
-  message("Dealing with grooming on first-of-month issue...")
+  message("Dealing with first-of-month issue...")
 
   # Second part
   members_remove <- members %>%
@@ -92,7 +92,7 @@ subset_members <- function(babase) {
     dplyr::group_by(sname, yearmon) %>%
     dplyr::mutate(yearmon_num_grp = n_distinct(grp))
 
-  ## Check in what group an individual lives in  on the first of the month.
+  ## Check in what group an individual lives in on the first of the month.
   members_l <- members_l %>%
     dplyr::ungroup() %>%
     dplyr::inner_join(dplyr::select(members_remove, first_of_month_grp = grp, sname, yearmon),
@@ -228,11 +228,46 @@ subset_females <- function(members_l) {
 #' @export
 #'
 #' @examples
-subset_grooming <- function(babase, members_l) {
+subset_interactions <- function(babase, members_l, my_acts = NULL) {
 
   if (class(babase) != "PostgreSQLConnection") {
     stop("Invalid connection to babase.")
   }
+
+
+  # verify-acts -------------------------------------------------------------
+
+  # Get acts table, trim "act" column, which currently includes spaces
+  acts_l <- dplyr::tbl(babase, "acts") %>%
+    dplyr::collect() %>%
+    dplyr::mutate(act = stringr::str_trim(act))
+
+  all_acts <- acts_l$act
+
+  # Exit with error if user specifies an act that doesn't exist.
+  if (!all(my_acts %in% all_acts)) {
+    stop(paste0("Unrecognized acts: ",
+                paste(my_acts[!my_acts %in% all_acts], collapse = ", "),
+                "."))
+  }
+
+  # Grooming can't be combined with other interactions because of 1st of month issue
+  if (length(my_acts) > 1 & "G" %in% my_acts) {
+    stop("Grooming can't be combined with other kinds of act because of 1st of month issue. Subset grooming separately.")
+  }
+
+  my_classes <- acts_l %>%
+    dplyr::filter(act %in% my_acts) %>%
+    dplyr::pull(class) %>%
+    unique()
+
+  # Check if the acts chosen by the user all belong to one kind of behavior
+  # E.g., just grooming or just agonism
+  # Warn (but don't exit) if behavior classes are mixed
+  if (length(my_classes) > 1) {
+    warning("Interactions include different classes of behavior. Output might be nonsensical!")
+  }
+
 
   # babase-tables -----------------------------------------------------------
 
@@ -248,21 +283,22 @@ subset_grooming <- function(babase, members_l) {
   maturedates_l <- dplyr::collect(maturedates)
   rankdates_l <- dplyr::collect(rankdates)
 
-  # grooming-interactions-query ---------------------------------------------
+# interactions-query ------------------------------------------------------
 
-  message("Obtaining and validating grooming data...")
+  message("Obtaining and validating interaction data...")
 
-  grooming <- actor_actees %>%
+  inter <- actor_actees %>%
+    dplyr::mutate(act = TRIM(act)) %>%
     dplyr::inner_join(dplyr::select(biograph, sname, actor_sex = sex),
                       by = c("actor" = "sname")) %>%
     dplyr::inner_join(dplyr::select(biograph, sname, actee_sex = sex),
                       by = c("actee" = "sname")) %>%
-    dplyr::filter(act == "G" & actee_grp != 1.3 & actee_grp != 1.4 &
+    dplyr::filter(act %in% my_acts & actee_grp != 1.3 & actee_grp != 1.4 &
                     (actee_grp < 3 | actee_grp == 9) &
                     actor_grp != 1.3 & actor_grp != 1.4 & (actor_grp < 3 | actor_grp == 9)) %>%
     dplyr::collect()
 
-  grooming <- grooming %>%
+  inter <- inter %>%
     dplyr::left_join(dplyr::select(maturedates_l, sname, actor_matured = matured),
                      by = c("actor" = "sname")) %>%
     dplyr::left_join(dplyr::select(maturedates_l, sname, actee_matured = matured),
@@ -272,209 +308,120 @@ subset_grooming <- function(babase, members_l) {
     dplyr::left_join(dplyr::select(rankdates_l, sname, actee_ranked = ranked),
                      by = c("actee" = "sname"))
 
-  grooming <- grooming %>%
+  inter <- inter %>%
     dplyr::filter(((actor_sex == "F" & date >= actor_matured) |
                      (actor_sex == "M" & date >= actor_ranked)) &
                     ((actee_sex == "F" & date >= actee_matured) |
                        (actee_sex == "M" & date >= actee_ranked)))
 
-  grooming <- grooming %>%
-    dplyr::select(iid, sid, act, date, actor, actor_grp, actee, actee_grp,
-                  actor_sex, actee_sex)
 
-  grooming$yearmon <- as.character(zoo::as.yearmon(grooming$date))
+  inter$yearmon <- as.character(zoo::as.yearmon(inter$date))
 
+  inter <- inter %>%
+    dplyr::select(iid, sid, act, actor, actee, actor_sex, actee_sex, date,
+                  yearmon, actor_grp, actee_grp)
 
-  # grooming-data-manip -----------------------------------------------------
+  # If user requested grooming data, deal with first-of-month issue
 
-  ## Check grooming data for potential issues with 1st of month issue
-  ## This problem is being fixed and this code will no longer be needed oncees the historic grooming data has been solved.
-  ## Yearmon are unique year and month combinations, e.g. MAR2000 or APR2012
-  ## The check is done per sname and yearmon combination.
+  if (my_acts[1] == "G") {
 
-  ## Potential issues in the grooming interactions are all grooming that took place prior to Jul 2006.
-  potential_issues <- members_l %>%
-    dplyr::filter(first_of_month_grp != grp & date < '2006-07-01')
+    message("Dealing with grooming on first-of-month issue...")
 
-  ## There is no issue if an individual is only present in 1 group for the whole months as 1st of the month group will be the same as the whole month group
-  ## There is also no issue if an individual is present in 1 monitored group (<3) and one observed group, because grooming is only recorded in certain groups.
-  no_issue_sname_yearmon <- potential_issues %>%
-    dplyr::filter(first_of_month_grp > 8.9 & yearmon_num_grp == 2) %>%
-    dplyr::mutate(grp = suppressWarnings(as.numeric(grps))) %>%
-    dplyr::select(sname, yearmon, grp) %>%
-    dplyr::distinct(sname, yearmon, grp)
+    # grooming-data-manip -----------------------------------------------------
 
-  ## There is an issue if an indvidual is in more than two monitored groups.
-  issue_sname_yearmon <- potential_issues %>%
-    dplyr::filter((first_of_month_grp > 8.9 & yearmon_num_grp > 2) |
-                    (first_of_month_grp < 9 & yearmon_num_grp > 1)) %>%
-    dplyr::mutate(grp = suppressWarnings(as.numeric(grps))) %>%
-    dplyr::select(sname, yearmon, grp) %>%
-    dplyr::distinct(sname, yearmon, grp)
+    ## Check grooming data for potential issues with 1st of month issue
+    ## This problem is being fixed and this code will no longer be needed once the historic grooming data has been solved.
+    ## Yearmon are unique year and month combinations, e.g. MAR2000 or APR2012
+    ## The check is done per sname and yearmon combination.
 
-  no_issue_actor <- no_issue_sname_yearmon %>%
-    dplyr::rename(actor = sname, no_issue_actor_grp = grp)
-  no_issue_actee <- no_issue_sname_yearmon %>%
-    dplyr::rename(actee = sname, no_issue_actee_grp = grp)
-  issue_actor <- issue_sname_yearmon %>%
-    dplyr::rename(actor = sname, issue_actor_grp = grp)
-  issue_actee <- issue_sname_yearmon %>%
-    dplyr::rename(actee = sname, issue_actee_grp = grp)
+    ## Potential issues in the grooming interactions are all grooming that took place prior to Jul 2006.
+    potential_issues <- members_l %>%
+      dplyr::filter(first_of_month_grp != grp & date < '2006-07-01')
 
-  issue_actor$flag_issue_actor <- 1
-  issue_actee$flag_issue_actee <- 1
-  no_issue_actor$flag_no_issue_actor <- 1
-  no_issue_actee$flag_no_issue_actee <- 1
+    ## There is no issue if an individual is only present in 1 group for the whole month as 1st of the month group will be the same as the whole month group
+    ## There is also no issue if an individual is present in 1 monitored group (<3) and one observed group, because grooming is only recorded in certain groups.
+    no_issue_sname_yearmon <- potential_issues %>%
+      dplyr::filter(first_of_month_grp > 8.9 & yearmon_num_grp == 2) %>%
+      dplyr::mutate(grp = suppressWarnings(as.numeric(grps))) %>%
+      dplyr::select(sname, yearmon, grp) %>%
+      dplyr::distinct(sname, yearmon, grp)
 
-  grooming_l <- grooming %>%
-    dplyr::left_join(no_issue_actor, by = c("actor", "yearmon")) %>%
-    dplyr::left_join(no_issue_actee, by = c("actee", "yearmon")) %>%
-    dplyr::left_join(issue_actor, by = c("actor", "yearmon")) %>%
-    dplyr::left_join(issue_actee, by = c("actee", "yearmon"))
+    ## There is an issue if an indvidual is in more than two monitored groups.
+    issue_sname_yearmon <- potential_issues %>%
+      dplyr::filter((first_of_month_grp > 8.9 & yearmon_num_grp > 2) |
+                      (first_of_month_grp < 9 & yearmon_num_grp > 1)) %>%
+      dplyr::mutate(grp = suppressWarnings(as.numeric(grps))) %>%
+      dplyr::select(sname, yearmon, grp) %>%
+      dplyr::distinct(sname, yearmon, grp)
 
-  grooming_l <- grooming_l %>%
-    dplyr::mutate(actor_grp = dplyr::case_when(
-      (is.na(flag_no_issue_actor) & is.na(flag_issue_actor) & actor_grp > 3) ~ actee_grp,
-      (is.na(flag_no_issue_actor) & is.na(flag_issue_actor)) ~ actor_grp,
-      !is.na(flag_no_issue_actor) ~ no_issue_actor_grp,
-      (is.na(flag_no_issue_actor) & !is.na(flag_issue_actor) &
-         is.na(flag_no_issue_actee) & is.na(flag_issue_actee)) ~ actee_grp,
-      (is.na(flag_no_issue_actor) & !is.na(flag_issue_actor) &
-         !is.na(flag_no_issue_actee)) ~ no_issue_actee_grp,
-      (is.na(flag_no_issue_actor) & !is.na(flag_issue_actor) &
-         !is.na(flag_issue_actee)) ~ 991,
-      TRUE ~ 992
-    ))
+    no_issue_actor <- no_issue_sname_yearmon %>%
+      dplyr::rename(actor = sname, no_issue_actor_grp = grp)
+    no_issue_actee <- no_issue_sname_yearmon %>%
+      dplyr::rename(actee = sname, no_issue_actee_grp = grp)
+    issue_actor <- issue_sname_yearmon %>%
+      dplyr::rename(actor = sname, issue_actor_grp = grp)
+    issue_actee <- issue_sname_yearmon %>%
+      dplyr::rename(actee = sname, issue_actee_grp = grp)
 
-  grooming_l <- grooming_l %>%
-    dplyr::mutate(actee_grp = dplyr::case_when(
-      (is.na(flag_no_issue_actee) & is.na(flag_issue_actee) & actee_grp > 3) ~ actor_grp,
-      (is.na(flag_no_issue_actee) & is.na(flag_issue_actee)) ~ actee_grp,
-      !is.na(flag_no_issue_actee) ~ no_issue_actee_grp,
-      (is.na(flag_no_issue_actee) & !is.na(flag_issue_actee) &
-         is.na(flag_no_issue_actor) & is.na(flag_issue_actor)) ~ actor_grp,
-      (is.na(flag_no_issue_actee) & !is.na(flag_issue_actee) &
-         !is.na(flag_no_issue_actor)) ~ no_issue_actor_grp,
-      (is.na(flag_no_issue_actee) & !is.na(flag_issue_actee) &
-         !is.na(flag_issue_actor)) ~ 993,
-      TRUE ~ 994
-    ))
+    issue_actor$flag_issue_actor <- 1
+    issue_actee$flag_issue_actee <- 1
+    no_issue_actor$flag_no_issue_actor <- 1
+    no_issue_actee$flag_no_issue_actee <- 1
 
-  grooming_l <- grooming_l %>%
-    dplyr::select(iid, sid, act, actor, actee, actor_sex, actee_sex, date, yearmon,
-                  actor_grp, actee_grp)
+    grooming_l <- inter %>%
+      dplyr::left_join(no_issue_actor, by = c("actor", "yearmon")) %>%
+      dplyr::left_join(no_issue_actee, by = c("actee", "yearmon")) %>%
+      dplyr::left_join(issue_actor, by = c("actor", "yearmon")) %>%
+      dplyr::left_join(issue_actee, by = c("actee", "yearmon"))
+
+    grooming_l <- grooming_l %>%
+      dplyr::mutate(actor_grp = dplyr::case_when(
+        (is.na(flag_no_issue_actor) & is.na(flag_issue_actor) & actor_grp > 3) ~ actee_grp,
+        (is.na(flag_no_issue_actor) & is.na(flag_issue_actor)) ~ actor_grp,
+        !is.na(flag_no_issue_actor) ~ no_issue_actor_grp,
+        (is.na(flag_no_issue_actor) & !is.na(flag_issue_actor) &
+           is.na(flag_no_issue_actee) & is.na(flag_issue_actee)) ~ actee_grp,
+        (is.na(flag_no_issue_actor) & !is.na(flag_issue_actor) &
+           !is.na(flag_no_issue_actee)) ~ no_issue_actee_grp,
+        (is.na(flag_no_issue_actor) & !is.na(flag_issue_actor) &
+           !is.na(flag_issue_actee)) ~ 991,
+        TRUE ~ 992
+      ))
+
+    grooming_l <- grooming_l %>%
+      dplyr::mutate(actee_grp = dplyr::case_when(
+        (is.na(flag_no_issue_actee) & is.na(flag_issue_actee) & actee_grp > 3) ~ actor_grp,
+        (is.na(flag_no_issue_actee) & is.na(flag_issue_actee)) ~ actee_grp,
+        !is.na(flag_no_issue_actee) ~ no_issue_actee_grp,
+        (is.na(flag_no_issue_actee) & !is.na(flag_issue_actee) &
+           is.na(flag_no_issue_actor) & is.na(flag_issue_actor)) ~ actor_grp,
+        (is.na(flag_no_issue_actee) & !is.na(flag_issue_actee) &
+           !is.na(flag_no_issue_actor)) ~ no_issue_actor_grp,
+        (is.na(flag_no_issue_actee) & !is.na(flag_issue_actee) &
+           !is.na(flag_issue_actor)) ~ 993,
+        TRUE ~ 994
+      ))
+
+    grooming_l <- select(grooming_l, -contains("issue"))
+
+    inter <- grooming_l
+  }
 
   ## Restrict the grooming data to the same data restrictions of members
   grp_dates <- dplyr::distinct(members_l, grp, date)
 
-  temp1 <- grooming_l %>%
+  temp1 <- inter %>%
     dplyr::inner_join(grp_dates, by = c("date", "actee_grp" = "grp"))
 
-  temp2 <- grooming_l %>%
+  temp2 <- inter %>%
     dplyr::inner_join(grp_dates, by = c("date", "actor_grp" = "grp"))
 
-  grooming_l <- dplyr::bind_rows(temp1, temp2) %>%
+  inter <- dplyr::bind_rows(temp1, temp2) %>%
     dplyr::distinct(iid, .keep_all = TRUE)
 
   # NOTE: Duplicated rows not removed in original code
 
-  # Remove trailing space for act "G "
-  grooming_l$act <- stringr::str_trim(grooming_l$act)
-
-  return(grooming_l)
-
-}
-
-
-#' Obtain a subset of agonism data that excludes behavioral observation gaps.
-#'
-#' @param babase A DBI connection to the babase database
-#' @param members_l A subset of members table produced by the function 'subset_members'
-#'
-#' @return A subset of agonsism data that excludes behavioral observation gaps.
-#' @export
-#'
-#' @examples
-subset_agonism <- function(babase, members_l) {
-
-  if (class(babase) != "PostgreSQLConnection") {
-    stop("Invalid connection to babase.")
-  }
-
-  # babase-tables -----------------------------------------------------------
-
-  message("Creating connections to babase tables...")
-
-  # Database connections
-  biograph <- dplyr::tbl(babase, "biograph")
-  maturedates <- dplyr::tbl(babase, "maturedates")
-  actor_actees <- dplyr::tbl(babase, "actor_actees")
-  rankdates <- dplyr::tbl(babase, "rankdates")
-
-  # Local
-  maturedates_l <- dplyr::collect(maturedates)
-  rankdates_l <- dplyr::collect(rankdates)
-
-
-  # agonism-interactions-query ----------------------------------------------
-
-  message("Obtaining and validating agonism data...")
-
-  agonism <- actor_actees %>%
-    dplyr::inner_join(dplyr::select(biograph, sname, actor_sex = sex),
-                      by = c("actor" = "sname")) %>%
-    dplyr::inner_join(dplyr::select(biograph, sname, actee_sex = sex),
-                      by = c("actee" = "sname")) %>%
-    dplyr::filter(act %in% c("AS", "OS", "DS", "A") & actee_grp != 1.3 & actee_grp != 1.4 &
-                    (actee_grp < 3 | actee_grp == 9) &
-                    actor_grp != 1.3 & actor_grp != 1.4 & (actor_grp < 3 | actor_grp == 9)) %>%
-    dplyr::collect()
-
-  agonism <- agonism %>%
-    dplyr::left_join(dplyr::select(maturedates_l, sname, actor_matured = matured),
-                     by = c("actor" = "sname")) %>%
-    dplyr::left_join(dplyr::select(maturedates_l, sname, actee_matured = matured),
-                     by = c("actee" = "sname")) %>%
-    dplyr::left_join(dplyr::select(rankdates_l, sname, actor_ranked = ranked),
-                     by = c("actor" = "sname")) %>%
-    dplyr::left_join(dplyr::select(rankdates_l, sname, actee_ranked = ranked),
-                     by = c("actee" = "sname"))
-
-  agonism <- agonism %>%
-    dplyr::filter(((actor_sex == "F" & date >= actor_matured) |
-                     (actor_sex == "M" & date >= actor_ranked)) &
-                    ((actee_sex == "F" & date >= actee_matured) |
-                       (actee_sex == "M" & date >= actee_ranked)))
-
-  agonism <- agonism %>%
-    dplyr::select(iid, sid, act, date, actor, actor_grp, actee, actee_grp,
-                  actor_sex, actee_sex)
-
-  agonism$yearmon <- as.character(zoo::as.yearmon(agonism$date))
-
-
-  # agonism-data-manip ------------------------------------------------------
-
-  agonism <- agonism %>%
-    dplyr::select(iid, sid, act, actor, actee, actor_sex, actee_sex, date, yearmon,
-                  actor_grp, actee_grp)
-
-  ## Restrict the grooming data to the same data restrictions of members
-  grp_dates <- dplyr::distinct(members_l, grp, date)
-
-  temp1 <- agonism %>%
-    dplyr::inner_join(grp_dates, by = c("date", "actee_grp" = "grp"))
-
-  temp2 <- agonism %>%
-    dplyr::inner_join(grp_dates, by = c("date", "actor_grp" = "grp"))
-
-  agonism <- dplyr::bind_rows(temp1, temp2) %>%
-    dplyr::distinct(iid, .keep_all = TRUE)
-
-  # Remove trailing space for act "A "
-  agonism$act <- stringr::str_trim(agonism$act)
-
-  return(agonism)
+  return(inter)
 
 }
 
@@ -484,13 +431,13 @@ subset_agonism <- function(babase, members_l) {
 #' @param babase A DBI connection to the babase database
 #' @param members_l A subset of members table produced by the function 'subset_members'
 #' @param focals_l A subset of focals produced by the function 'subset_focals'
-#' @param grooming_l A subset of grooming data produced by the function 'subset_grooming'
+#' @param interactions_l A subset of interaction data produced by the function 'subset_interactions'
 #'
 #' @return A tibble with one row per animal and year of life, with contextual data
 #' @export
 #'
 #' @examples
-make_iyol <- function(babase, members_l, focals_l, grooming_l) {
+make_iyol <- function(babase, members_l, focals_l, interactions_l) {
 
   if (class(babase) != "PostgreSQLConnection") {
     stop("Invalid connection to babase.")
@@ -515,7 +462,7 @@ make_iyol <- function(babase, members_l, focals_l, grooming_l) {
 
   # Find last date
   last_date <- min(max(members_l$date), max(focals_l$date),
-                   max(grooming_l$date))
+                   max(interactions_l$date))
 
 
   # individ-year-of-life ----------------------------------------------------
@@ -623,7 +570,7 @@ make_iyol <- function(babase, members_l, focals_l, grooming_l) {
 #' @param members_l A subset of members table produced by the function 'subset_members'
 #' @param focals_l A subset of focals produced by the function 'subset_focals'
 #' @param females_l A subset of female counts produced by the function 'subset_females'
-#' @param grooming_l A subset of grooming data produced by the function 'subset_grooming'
+#' @param interactions_l A subset of interactions data produced by the function 'subset_interactions'
 #' @param min_cores_days The minimum number of coresidence days needed for dyad to be included. Defaults to 60 days.
 #' @param within_grp Logical value indicating whether regressions should be fit relative to dyads in entire population (default) or to dyads within-group
 #'
@@ -631,7 +578,7 @@ make_iyol <- function(babase, members_l, focals_l, grooming_l) {
 #' @export
 #'
 #' @examples
-dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
+dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, interactions_l,
                 min_cores_days = 60, within_grp = FALSE, parallel = FALSE,
                 ncores = NULL) {
 
@@ -670,7 +617,7 @@ dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
                        .packages = c('tidyverse')) %dopar% {
                          get_dyadic_subset(my_iyol[i, ], biograph_l,
                                            members_l, focals_l, females_l,
-                                           grooming_l, min_cores_days,
+                                           interactions_l, min_cores_days,
                                            within_grp)
                        }
     close(pb)
@@ -686,7 +633,7 @@ dsi <- function(my_iyol, biograph_l, members_l, focals_l, females_l, grooming_l,
     for (i in 1:nrow(my_iyol)) {
       my_iyol[i, ]$subset <- list(get_dyadic_subset(my_iyol[i, ], biograph_l,
                                                     members_l, focals_l, females_l,
-                                                    grooming_l, min_cores_days,
+                                                    interactions_l, min_cores_days,
                                                     within_grp))
       setTxtProgressBar(pb, i)
     }

@@ -39,8 +39,9 @@ members_l <- subset_members(babase)
 # Subset other data sets used for sociality indices
 focals_l <- subset_focals(babase, members_l)
 females_l <- subset_females(members_l)
-grooming_l <- subset_grooming(babase, members_l)
-agonism_l <- subset_agonism(babase, members_l)
+
+grooming_l <- subset_interactions(babase, members_l, my_acts = c("G"))
+agonism_l <- subset_interactions(babase, members_l, my_acts = c("A", "AS"))
 
 # Make an individual-year-of-life data set for adults
 iyol <- make_iyol(babase, members_l, focals_l, grooming_l)
