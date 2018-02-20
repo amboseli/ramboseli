@@ -1416,6 +1416,7 @@ dyadic_index_summary <- function(df) {
 #' @param directional Logical value indicating whether to preserve directionality
 #'
 #' @return The input data with additional list columns.
+#' @export
 #'
 #' @examples
 dyadic_row_summary <- function(df, focal, directional) {
