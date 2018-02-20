@@ -50,37 +50,23 @@ iyol <- make_iyol(babase, members_l, focals_l, grooming_l)
 saveRDS(iyol, "data/iyol_2018-02-15.RDS")
 # iyol <- readRDS("data/iyol_2018-02-15.RDS")
 
-
-# calculate-dsi -----------------------------------------------------------
-
 ## Restrict to groups where the animal was present for at least 60 days
 iyol_sub <- iyol %>%
   filter(days_present >= 60)
 
 
-# Calculate population-level DSI subset for each row of data
-# Warning: takes up to 30 hours!!!!
-# Faster if run using parallel, but speed will depend on number of cores
-# The option for parallel processing seems finicky
-# If you're getting errors, try setting parallel to FALSE
-dsi_pop <- dyadic_index(iyol_sub, biograph_l, members_l, focals_l, females_l,
-                        grooming_l, min_cores_days = 60, within_grp = FALSE,
-                        parallel = TRUE, directional = FALSE)
 
-# Example of how to save / reload a data set
-saveRDS(dsi_pop, "data/dsi-pop_2018-02-15.RDS")
-# dsi_pop <- readRDS("data/dsi-pop_2018-02-15.RDS")
+# NOTE:
+# All function calls below will be MUCH faster when parallel = TRUE.
+# Speed will depend on number of cores; by default, all are used.
+# But the option for parallel processing seems finicky.
+# If you're getting errors, try setting parallel to FALSE.
 
-# Summarize DSI variables for top partners in each year of life
-dsi_pop_summary <- dyadic_index_summary(dsi_pop)
-
-saveRDS(dsi_pop_summary, "data/dsi-pop_summary_2018-02-15.RDS")
-# dsi_pop_summary <- readRDS("data/dsi-pop_summary_2018-02-15.RDS")
 
 
 # calculate-sci -----------------------------------------------------------
 
-# Calculate SCI subset for each row of data
+# Calculate grooming social connectedness index
 sci <- sci(iyol_sub, members_l, focals_l, females_l, grooming_l,
            min_res_days = 60, parallel = TRUE)
 
@@ -88,9 +74,21 @@ saveRDS(sci, "data/sci_2018-02-15.RDS")
 # sci <- readRDS("data/sci_2018-02-15.RDS")
 
 
+
+# directed-sci ------------------------------------------------------------
+
+# Calculate DIRECTED grooming connectedness index
+sci_dir <- sci(iyol_sub, members_l, focals_l, females_l, grooming_l,
+           min_res_days = 60, parallel = TRUE, directional = TRUE)
+
+saveRDS(sci_dir, "data/sci-dir_2018-02-15.RDS")
+# sci_dir <- readRDS("data/sci-dir_2018-02-15.RDS")
+
+
+
 # calculate-agi -----------------------------------------------------------
 
-# Calculate AGI subset for each row of data
+# Calculate directed agonism connectedness index
 agi <- sci(iyol_sub, members_l, focals_l, females_l, agonism_l,
            min_res_days = 60, parallel = TRUE, directional = TRUE)
 
@@ -100,11 +98,20 @@ saveRDS(agi, "data/agi_2018-02-15.RDS")
 # agi <- readRDS("data/agi_2018-02-15.RDS")
 
 
-# directed-sci ------------------------------------------------------------
 
-# Calculate AGI subset for each row of data
-sci_dir <- sci(iyol_sub, members_l, focals_l, females_l, grooming_l,
-           min_res_days = 60, parallel = TRUE, directional = TRUE)
+# calculate-dsi -----------------------------------------------------------
 
-saveRDS(sci_dir, "data/sci-dir_2018-02-15.RDS")
-# sci_dir <- readRDS("data/sci-dir_2018-02-15.RDS")
+# Calculate population-level dyadic grooming index
+# Warning: takes a really long time!
+dsi_pop <- dyadic_index(iyol_sub, biograph_l, members_l, focals_l, females_l,
+                        grooming_l, min_cores_days = 60, within_grp = FALSE,
+                        parallel = TRUE, directional = FALSE)
+
+saveRDS(dsi_pop, "data/dsi-pop_2018-02-15.RDS")
+# dsi_pop <- readRDS("data/dsi-pop_2018-02-15.RDS")
+
+# Summarize DSI variables for top partners in each year of life
+dsi_pop_summary <- dyadic_index_summary(dsi_pop)
+
+saveRDS(dsi_pop_summary, "data/dsi-pop_summary_2018-02-15.RDS")
+# dsi_pop_summary <- readRDS("data/dsi-pop_summary_2018-02-15.RDS")
