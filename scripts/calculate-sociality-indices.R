@@ -6,8 +6,7 @@ if (!("devtools" %in% installed.packages()[,"Package"]))
   install.packages("devtools")
 
 # Install newest version of ramboseli if not already installed
-if (!("ramboseli" %in% installed.packages()[,"Package"]))
-  devtools::install_github("amboseli/ramboseli")
+devtools::install_github("amboseli/ramboseli")
 
 Sys.setenv(TZ = 'UTC')
 list.of.packages <- list("foreach", "doSNOW", "parallel", "tidyverse",
