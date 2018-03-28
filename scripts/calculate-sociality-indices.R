@@ -40,7 +40,7 @@ focals_l <- subset_focals(babase, members_l)
 females_l <- subset_females(members_l)
 
 grooming_l <- subset_interactions(babase, members_l, my_acts = c("G"))
-agonism_l <- subset_interactions(babase, members_l, my_acts = c("A", "AS"))
+agonism_l <- subset_interactions(babase, members_l, my_acts = c("A", "AS", "DS", "OS"))
 
 # Make an individual-year-of-life data set for adults
 iyol <- make_iyol(babase, members_l, focals_l, grooming_l)
@@ -89,11 +89,11 @@ saveRDS(sci_dir, "data/sci-dir_2018-02-15.RDS")
 
 # Calculate directed agonism connectedness index
 agi <- sci(iyol_sub, members_l, focals_l, females_l, agonism_l,
-           min_res_days = 60, parallel = TRUE, directional = TRUE)
+           min_res_days = 60, parallel = TRUE, directional = TRUE, ncores = 3)
 
 names(agi) <- str_replace(names(agi), pattern = "SCI_", replacement = "AGI_")
 
-saveRDS(agi, "data/agi_2018-02-15.RDS")
+saveRDS(agi, "data/agi_2018-03-07.RDS")
 # agi <- readRDS("data/agi_2018-02-15.RDS")
 
 
