@@ -82,6 +82,10 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
     dplyr::left_join(my_focals, by = c("grp", "sname")) %>%
     dplyr::left_join(my_females, by = c("grp", "sname"))
 
+  if (nrow(my_subset) == 0) {
+    return(dplyr::tbl_df(NULL))
+  }
+
   # Filter and calculate variables
   my_subset <- my_subset %>%
     dplyr::filter(days_present >= min_res_days & mean_f_count > 0) %>%
