@@ -82,7 +82,7 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
     dplyr::left_join(my_focals, by = c("grp", "sname")) %>%
     dplyr::left_join(my_females, by = c("grp", "sname"))
 
-  if (nrow(my_subset) == 0) {
+  if (nrow(my_subset) == 0 | nrow(my_focals) == 0 | nrow(my_females) == 0) {
     return(dplyr::tbl_df(NULL))
   }
 
@@ -644,6 +644,10 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
 #'
 #' @examples
 fit_dyadic_regression <- function(df) {
+
+  if (all(df$i_adj == 0)) {
+    return(tbl_df(NULL))
+  }
 
   # There will be lots of zeros in most subsets
   # If present, remove these before fitting regression model
