@@ -462,6 +462,11 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
     my_interactions <- interactions_l %>%
       dplyr::filter(date >= my_start & date <= my_end)
 
+    if (any(map_int(list(my_members, my_females, my_focals, my_interactions),
+                    nrow) == 0)) {
+      return(dplyr::tbl_df(NULL))
+    }
+
     # Find all distinct members IN POPULATION between start and end dates
     # For each animal in each group durign this time, calculate:
     # number of days present, first date, last date
