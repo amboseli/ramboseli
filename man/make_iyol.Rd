@@ -5,7 +5,7 @@
 \title{Create a data frame for each adult individual year of life}
 \usage{
 make_iyol(babase, members_l, focals_l = NULL, interactions_l = NULL,
-  .by_grp = TRUE)
+  .by_grp = TRUE, .adults_only = TRUE)
 }
 \arguments{
 \item{babase}{A DBI connection to the babase database}
@@ -15,6 +15,10 @@ make_iyol(babase, members_l, focals_l = NULL, interactions_l = NULL,
 \item{focals_l}{A subset of focals produced by the function 'subset_focals'}
 
 \item{interactions_l}{A subset of interaction data produced by the function 'subset_interactions'}
+
+\item{.by_grp}{Logical indicating whether to separate by group. Default is TRUE}
+
+\item{.adults_only}{Logical indicating whether to include adults only. Default is TRUE}
 }
 \value{
 A tibble with one row per animal (and optionally, per group) and year of life, with contextual data

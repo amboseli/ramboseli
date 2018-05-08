@@ -432,13 +432,15 @@ subset_interactions <- function(babase, members_l, my_acts = NULL) {
 #' @param members_l A subset of members table produced by the function 'subset_members'
 #' @param focals_l A subset of focals produced by the function 'subset_focals'
 #' @param interactions_l A subset of interaction data produced by the function 'subset_interactions'
+#' @param .by_grp Logical indicating whether to separate by group. Default is TRUE
+#' @param .adults_only Logical indicating whether to include adults only. Default is TRUE
 #'
 #' @return A tibble with one row per animal (and optionally, per group) and year of life, with contextual data
 #' @export
 #'
 #' @examples
 make_iyol <- function(babase, members_l, focals_l = NULL, interactions_l = NULL,
-                      .by_grp = TRUE) {
+                      .by_grp = TRUE, .adults_only = TRUE) {
 
   if (class(babase) != "PostgreSQLConnection") {
     stop("Invalid connection to babase.")
@@ -483,13 +485,24 @@ make_iyol <- function(babase, members_l, focals_l = NULL, interactions_l = NULL,
     dplyr::select(sname, sex, birth, statdate, matured, ranked) %>%
     dplyr::collect()
 
-  iyol <- iyol %>%
-    dplyr::mutate(first_start_date = dplyr::case_when(
-      sex == "F" ~ matured,
-      sex == "M" ~ ranked
-    )) %>%
-    tidyr::drop_na(first_start_date) %>%
-    dplyr::select(sname, sex, birth, first_start_date, statdate, -ranked, -matured)
+  if (.adults_only) {
+    iyol <- iyol %>%
+      dplyr::mutate(first_start_date = dplyr::case_when(
+        sex == "F" ~ matured,
+        sex == "M" ~ ranked
+      )) %>%
+      tidyr::drop_na(first_start_date) %>%
+      dplyr::select(sname, sex, birth, first_start_date, statdate, -ranked, -matured)
+  }
+  else {
+    iyol <- iyol %>%
+      dplyr::mutate(first_start_date = dplyr::case_when(
+        sex == "F" ~ birth,
+        sex == "M" ~ birth
+      )) %>%
+      tidyr::drop_na(first_start_date) %>%
+      dplyr::select(sname, sex, birth, first_start_date, statdate, -ranked, -matured)
+  }
 
   make_bday_seq <- function(df) {
     res <- as.character(seq(df$birth, df$statdate, by = "year"))
