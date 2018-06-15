@@ -99,7 +99,7 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
 
   # Filter and calculate variables
   my_subset <- my_subset %>%
-    dplyr::filter(days_present >= min_res_days & mean_f_count > 0) %>%
+    dplyr::filter(days_observed >= min_res_days & mean_f_count > 0) %>%
     dplyr::mutate(OE = (n_focals / mean_f_count) / days_observed,
                   log2OE = log2(OE)) %>%
     dplyr::filter(!is.na(OE))
@@ -153,22 +153,22 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
 
   # Calculate variables, first for interactions with females only
   my_subset <- my_subset %>%
-    dplyr::mutate(ItoF_daily = ItoF / days_present,
+    dplyr::mutate(ItoF_daily = ItoF / days_observed,
                   log2ItoF_daily = dplyr::case_when(
                     ItoF == 0 ~ log_zero_daily_count,
                     TRUE ~ log2(ItoF_daily)),
-                  IfromF_daily = IfromF / days_present,
+                  IfromF_daily = IfromF / days_observed,
                   log2IfromF_daily = dplyr::case_when(
                     IfromF == 0 ~ log_zero_daily_count,
                     TRUE ~ log2(IfromF_daily)))
 
   if (include_males) {
     my_subset <- my_subset %>%
-      dplyr::mutate(ItoM_daily = ItoM / days_present,
+      dplyr::mutate(ItoM_daily = ItoM / days_observed,
                     log2ItoM_daily = dplyr::case_when(
                       ItoM == 0 ~ log_zero_daily_count,
                       TRUE ~ log2(ItoM_daily)),
-                    IfromM_daily = IfromM / days_present,
+                    IfromM_daily = IfromM / days_observed,
                     log2IfromM_daily = dplyr::case_when(
                       IfromM == 0 ~ log_zero_daily_count,
                       TRUE ~ log2(IfromM_daily)))
