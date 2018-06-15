@@ -46,8 +46,7 @@ agonism_l <- subset_interactions(babase, members_l, my_acts = c("A", "AS", "DS",
 iyol <- make_iyol(babase, members_l, focals_l, grooming_l)
 
 # Example of how to save / reload a data set
-saveRDS(iyol, "data/iyol_2018-02-15.RDS")
-# iyol <- readRDS("data/iyol_2018-02-15.RDS")
+saveRDS(iyol, paste0("data/iyol_", Sys.Date(), ".RDS"))
 
 ## Restrict to groups where the animal was present for at least 60 days
 iyol_sub <- iyol %>%
@@ -69,9 +68,7 @@ iyol_sub <- iyol %>%
 sci <- sci(iyol_sub, members_l, focals_l, females_l, grooming_l,
            min_res_days = 1, parallel = TRUE)
 
-saveRDS(sci, "data/sci_2018-02-15.RDS")
-# sci <- readRDS("data/sci_2018-02-15.RDS")
-
+saveRDS(sci, paste0("data/sci_", Sys.Date(), ".RDS"))
 
 
 # directed-sci ------------------------------------------------------------
@@ -80,9 +77,7 @@ saveRDS(sci, "data/sci_2018-02-15.RDS")
 sci_dir <- sci(iyol_sub, members_l, focals_l, females_l, grooming_l,
            min_res_days = 1, parallel = TRUE, directional = TRUE)
 
-saveRDS(sci_dir, "data/sci-dir_2018-02-15.RDS")
-# sci_dir <- readRDS("data/sci-dir_2018-02-15.RDS")
-
+saveRDS(sci_dir, paste0("data/sci-dir_", Sys.Date(), ".RDS"))
 
 
 # calculate-agi -----------------------------------------------------------
@@ -93,9 +88,7 @@ agi <- sci(iyol_sub, members_l, focals_l, females_l, agonism_l,
 
 names(agi) <- str_replace(names(agi), pattern = "SCI_", replacement = "AGI_")
 
-saveRDS(agi, "data/agi_2018-03-07.RDS")
-# agi <- readRDS("data/agi_2018-02-15.RDS")
-
+saveRDS(agi, paste0("data/agi_", Sys.Date(), ".RDS"))
 
 
 # calculate-dsi -----------------------------------------------------------
@@ -106,11 +99,10 @@ dsi_pop <- dyadic_index(iyol_sub, biograph_l, members_l, focals_l, females_l,
                         grooming_l, min_cores_days = 1, within_grp = FALSE,
                         parallel = TRUE, directional = FALSE)
 
-saveRDS(dsi_pop, "data/dsi-pop_2018-06-08.RDS")
-# dsi_pop <- readRDS("data/dsi-pop_2018-06-08.RDS")
+saveRDS(dsi_pop, paste0("data/dsi-pop_", Sys.Date(), ".RDS"))
 
 # Summarize DSI variables for top partners in each year of life
 dsi_pop_summary <- dyadic_index_summary(dsi_pop)
 
-saveRDS(dsi_pop_summary, "data/dsi-pop_summary_2018-06-08.RDS")
-# dsi_pop_summary <- readRDS("data/dsi-pop_summary_2018-02-15.RDS")
+saveRDS(dsi_pop_summary, paste0("data/dsi-pop_summary_", Sys.Date(), ".RDS"))
+
