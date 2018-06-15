@@ -68,7 +68,18 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
 
   ## Focal counts
   # Get all focals during relevant time period in grp
-  my_focals <- get_mem_dates(my_subset, members_l, focals_l, sel = quo(sum)) %>%
+  my_focals <- get_mem_dates(my_subset, members_l, focals_l, sel = quo(sum))
+
+  ## Observation days
+  # Focal animal was present and at least one focal sample was collected
+  obs_days <- my_focals %>%
+    group_by(grp, sname) %>%
+    summarise(days_observed = n())
+
+  my_subset <- my_subset %>%
+    left_join(obs_days, by = c("sname", "grp"))
+
+  my_focals <- my_focals %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(n_focals = sum(sum))
 
@@ -89,7 +100,7 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
   # Filter and calculate variables
   my_subset <- my_subset %>%
     dplyr::filter(days_present >= min_res_days & mean_f_count > 0) %>%
-    dplyr::mutate(OE = (n_focals / mean_f_count) / days_present,
+    dplyr::mutate(OE = (n_focals / mean_f_count) / days_observed,
                   log2OE = log2(OE)) %>%
     dplyr::filter(!is.na(OE))
 
