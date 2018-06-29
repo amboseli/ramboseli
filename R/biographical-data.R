@@ -601,3 +601,134 @@ make_iyol <- function(babase, members_l, focals_l = NULL, interactions_l = NULL,
 
   return(iyol)
 }
+
+#' Create a data frame with year-long intervals prior to specific target dates
+#'
+#' @param target_df A data frame that includes the columns sname, sex, grp, and date
+#' @param babase A DBI connection to the babase database
+#' @param members_l A subset of members table produced by the function 'subset_members'
+#' @param .by_grp Logical indicating whether to separate by group. Default is TRUE
+#' @param .adults_only Logical indicating whether to include adults only. Default is TRUE
+#'
+#' @return A tibble with one row per animal (and optionally, per group) and target date, with contextual data
+#' @export
+#'
+#' @examples
+make_target_date_df <- function(target_df, babase, members_l, .by_grp = TRUE,
+                                .adults_only = TRUE) {
+
+  if (class(babase) != "PostgreSQLConnection") {
+    stop("Invalid connection to babase.")
+  }
+
+  # Return an empty tibble if the subset is empty
+  if (is.null(target_df) |
+      !all(c("sname", "grp", "sex", "date") %in% names(target_df))) {
+    stop("Problem with input data. Target data frame must include rows 'sname', 'sex', 'grp', and 'date'.")
+  }
+
+  # babase-tables -----------------------------------------------------------
+
+  message("Creating connections to babase tables...")
+
+  # Database connections
+  biograph <- dplyr::tbl(babase, "biograph")
+  maturedates <- dplyr::tbl(babase, "maturedates")
+  rankdates <- dplyr::tbl(babase, "rankdates")
+
+  # Local
+  biograph_l <- dplyr::collect(biograph)
+
+  md_females <- maturedates %>%
+    dplyr::semi_join(dplyr::filter(biograph, sex == "F"), by = "sname") %>%
+    collect()
+
+  rd_males <- rankdates %>%
+    dplyr::semi_join(dplyr::filter(biograph, sex == "M"), by = "sname") %>%
+    collect()
+
+  # Find last date
+  last_date <- max(members_l$date)
+
+  message("Creating target-date data set...")
+
+  target_df <- target_df %>%
+    dplyr::left_join(biograph_l, by = c("sname", "sex")) %>%
+    dplyr::left_join(dplyr::select(md_females, sname, matured), by = "sname") %>%
+    dplyr::left_join(dplyr::select(rd_males, sname, ranked), by = "sname") %>%
+    dplyr::select(sname, obs_date = date, sex, birth, statdate, matured, ranked)
+
+  target_df <- target_df %>%
+    dplyr::mutate(first_start_date = dplyr::case_when(
+      sex == "F" ~ matured,
+      sex == "M" ~ ranked
+    )) %>%
+    dplyr::select(sname, obs_date, sex, birth, first_start_date, statdate, -ranked, -matured)
+
+  target_df <- target_df %>%
+    dplyr::mutate(start = dplyr::case_when(
+      first_start_date >= obs_date - lubridate::years(1) + days(1) ~ first_start_date,
+      TRUE ~ obs_date - lubridate::years(1) + days(1)))
+
+  target_df <- target_df %>%
+    dplyr::mutate(end = obs_date) %>%
+    select(sname, sex, birth, obs_date, first_start_date, statdate, start, end)
+
+  target_df <- target_df %>%
+    dplyr::filter(start <= end) %>%
+    arrange(sname, obs_date)
+
+  # .by_grp <- TRUE
+
+  if (.by_grp) {
+    ## Check in which groups the individual was present in the focal year
+    ## and create one row per focal year per group
+    temp <- target_df %>%
+      dplyr::left_join(dplyr::select(members_l, sname, date, grp), by = c("sname")) %>%
+      dplyr::filter(date >= start & date <= end) %>%
+      dplyr::distinct(sname, start, end, grp)
+
+    zdata <- target_df %>%
+      dplyr::inner_join(temp, by = c("sname", "start", "end")) %>%
+      tibble::rownames_to_column()
+
+    ## And check how many days the focal was present in the group in a focal year
+    zdata <- zdata %>%
+      dplyr::inner_join(dplyr::select(members_l, sname, grp, date), by = c("sname", "grp")) %>%
+      dplyr::filter(date >= start & date <= end) %>%
+      dplyr::group_by(sname, grp, start, end, rowname) %>%
+      dplyr::summarise(days_present = n()) %>%
+      dplyr::arrange(sname, grp, start, end)
+
+    target_df <- zdata %>%
+      dplyr::inner_join(target_df, by = c("sname", "start", "end")) %>%
+      dplyr::arrange(sname, grp, start, end) %>%
+      dplyr::select(-rowname)
+  }
+  else {
+    ## Check how many days the focal was present in ANY group in a focal year
+    # temp <- target_df %>%
+    #   dplyr::inner_join(dplyr::select(members_l, sname, date), by = c("sname")) %>%
+    #   dplyr::filter(date >= start & date <= end) %>%
+    #   dplyr::group_by(sname, start, end) %>%
+    #   dplyr::summarise(days_present = n()) %>%
+    #   dplyr::arrange(sname, start, end)
+    #
+    # target_df <- temp %>%
+    #   dplyr::inner_join(target_df, by = c("sname", "start", "end")) %>%
+    #   dplyr::arrange(sname, start, end)
+
+    stop("Not Yet Completed.")
+  }
+
+  # Calculate date variables
+  target_df <- target_df %>%
+    dplyr::mutate(midpoint = start + floor((end - start) / 2),
+                  age_start_yrs = as.numeric(start - birth) / 365.25,
+                  age_class = floor(plyr::round_any(age_start_yrs, 0.005)) + 1)
+
+  target_df <- dplyr::ungroup(target_df) %>%
+    distinct()
+
+  return(target_df)
+}
