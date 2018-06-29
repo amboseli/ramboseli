@@ -136,8 +136,7 @@ saveRDS(gca, file = paste0("data/gca_", Sys.Date(), ".RDS"))
 
 # WARNING: this one takes several days to finish!
 
-temp <- select(gca, -obs_date)
-gca_dsi <- dyadic_index(temp, biograph_l, members_l, focals_l, females_l,
+gca_dsi <- dyadic_index(gca, biograph_l, members_l, focals_l, females_l,
                         grooming_l, min_cores_days = 1, within_grp = FALSE,
                         parallel = TRUE, directional = FALSE)
 
@@ -161,7 +160,6 @@ kids <- tbl(babase, "parents") %>%
 kids$sex <- "F"
 
 kid_df <- make_target_date_df(kids, babase, members_l)
-kid_df <- select(kid_df, -obs_date)
 
 temp <- sci(kid_df, members_l, focals_l, females_l, grooming_l,
             min_res_days = 1, parallel = TRUE)

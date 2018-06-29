@@ -218,9 +218,9 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
   if (is.null(my_iyol) |
       !all(names(my_iyol) %in% c("sname", "grp", "start", "end", "days_present", "sex",
                                  "birth", "first_start_date", "statdate", "birth_dates",
-                                 "midpoint", "age_start_yrs", "age_class")) |
+                                 "midpoint", "age_start_yrs", "age_class", "obs_date")) |
       min_res_days < 0) {
-    stop("Problem with input data. Use the 'make_iyol' function to create the input.")
+    stop("Problem with input data. Use the 'make_iyol' or 'make_target_df' function to create the input.")
   }
 
   if (parallel) {
@@ -315,9 +315,9 @@ dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, in
   if (is.null(my_iyol) |
       !all(names(my_iyol) %in% c("sname", "grp", "start", "end", "days_present", "sex",
                                  "birth", "first_start_date", "statdate", "birth_dates",
-                                 "midpoint", "age_start_yrs", "age_class")) |
+                                 "midpoint", "age_start_yrs", "age_class", "obs_date")) |
       min_cores_days < 0) {
-    stop("Problem with input data. Use the 'make_iyol' function to create the input.")
+    stop("Problem with input data. Use the 'make_iyol' or 'make_target_df' function to create the input.")
   }
 
   if (parallel) {
@@ -751,7 +751,7 @@ dyadic_index_summary <- function(df) {
   if (is.null(df) |
       !all(names(df) %in% c("sname", "grp", "start", "end", "days_present", "sex",
                             "birth", "first_start_date", "statdate", "birth_dates",
-                            "midpoint", "age_start_yrs", "age_class", "subset", "di"))) {
+                            "midpoint", "age_start_yrs", "age_class", "subset", "di", "obs_date"))) {
     stop("Problem with input data. Use the 'dyadic_index' function to create the input.")
   }
 
