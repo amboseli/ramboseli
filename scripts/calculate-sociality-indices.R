@@ -62,6 +62,11 @@ iyol_sub <- iyol %>%
 
 
 
+
+######################################
+## SOCIALITY INDICES FOR YEARS OF LIFE
+
+
 # calculate-sci -----------------------------------------------------------
 
 # Calculate grooming social connectedness index
@@ -106,3 +111,57 @@ dsi_pop_summary <- dyadic_index_summary(dsi_pop)
 
 saveRDS(dsi_pop_summary, paste0("data/dsi-pop_summary_", Sys.Date(), ".RDS"))
 
+
+
+
+#####################################
+## SOCIALITY INDICES FOR TARGET DATES
+
+# target-date-gc-dsi ------------------------------------------------------
+
+#fGC samples
+gc <- tbl(babase, in_schema("fecal", "prep")) %>%
+  inner_join(tbl(babase, in_schema("fecal", "results")),
+             by = "sid") %>%
+  collect() %>%
+  left_join(select(members_l, sname, date, grp, sex),
+            by = c("sname", "date")) %>%
+  filter(sex == "F" & gc > 0) %>%
+  drop_na(gc) %>%
+  select(sid, sname, sex, grp, date, gc)
+
+gca <- make_target_date_df(gc, babase, members_l)
+
+saveRDS(gca, file = paste0("data/gca_", Sys.Date(), ".RDS"))
+
+# WARNING: this one takes several days to finish!
+
+temp <- select(gca, -obs_date)
+gca_dsi <- dyadic_index(temp, biograph_l, members_l, focals_l, females_l,
+                        grooming_l, min_cores_days = 1, within_grp = FALSE,
+                        parallel = TRUE, directional = FALSE)
+
+saveRDS(gca_dsi, file = paste0("data/gca-dsi_", Sys.Date(), ".RDS"))
+
+
+gca_dsi_summary <- dyadic_index_summary(gca_dsi)
+saveRDS(gca_dsi_summary, file = paste0("data/gca-dsi-summary_", Sys.Date(), ".RDS"))
+
+
+# target-date-offspring-dob -----------------------------------------------
+
+kids <- tbl(babase, "parents") %>%
+  select(mom, kid) %>%
+  inner_join(select(biograph, kid = sname, kid_birth = birth, kid_sex = sex,
+                    kid_statdate = statdate, matgrp), by = "kid") %>%
+  arrange(mom, kid_statdate) %>%
+  collect() %>%
+  rename(date = kid_birth, sname = mom, grp = matgrp)
+
+kids$sex <- "F"
+
+kid_df <- make_target_date_df(kids, babase, members_l)
+kid_df <- select(kid_df, -obs_date)
+
+temp <- sci(kid_df, members_l, focals_l, females_l, grooming_l,
+            min_res_days = 1, parallel = TRUE)
