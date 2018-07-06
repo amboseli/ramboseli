@@ -49,13 +49,11 @@ Some (but not all!) functions in this package query the babase database directly
 
 To use these functions, you must create an SSH tunnel to the database server. The instructions below explain how to do this.
 
-*It's important to note that you can use this package to calculate, e.g., sociality indices, without creating the SSH tunnel!*
-
 <br>
 
 ### Getting a login
 
-First, you must have a username and password for the babase database. If you're here and you're affiliated with the ABRP, you probably have this already. To create the tunnel, you must ALSO request a login to SSH into the server, papio.biology.duke.edu. *<span style="color: red;">Most people do NOT have this—it must be requested from Jake.</span>*
+First, you must have a username and password for the babase database. If you're here and you're affiliated with the ABRP, you probably have this already. To create the tunnel, you must ALSO request a login to SSH into the server, papio.biology.duke.edu. **Most people do NOT have this—it must be requested from Jake.**
 
 <br>
 
@@ -95,11 +93,11 @@ This is a little more complicated. I don't have a Windows machine to test it on,
 
 <!-- -->
 
-    "C:\Program Files\PuTTY\plink.exe" ssh -f YourUsername@papio.biology.duke.edu -L 2222:localhost:5432 -N -pw YourPassword"
+    "C:\Program Files\PuTTY\plink.exe" ssh -f YourUsername@papio.biology.duke.edu -L 2222:localhost:5432 -N -pw YourPassword
 
 Alternatively, if you don't want to save your password in a plain text file, use the following text that will prompt you for your password each time you run the batch file.
 
-    "C:\Program Files\PuTTY\plink.exe" ssh -f YourUsername@papio.biology.duke.edu -L 2222:localhost:5432 -N"
+    "C:\Program Files\PuTTY\plink.exe" ssh -f YourUsername@papio.biology.duke.edu -L 2222:localhost:5432 -N
 
 -   Save the batch file somewhere convenient with a name like "babase\_tunnel.bat"
 
