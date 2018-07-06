@@ -51,7 +51,7 @@ After you have installed the package once, you can simply load it in the future 
 <hr>
 <br>
 
-# Instructions for ceating an SSH tunnel
+# Instructions for creating an SSH tunnel
 
 Some (but not all!) functions in this package query the babase database directly. This allows you to pull "live" data from babase directly into R without going through the intermediate steps of writing queries in SQL, saving the results, and reading that data into R from static CSV files.
 
