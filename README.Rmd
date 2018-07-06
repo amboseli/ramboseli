@@ -115,7 +115,7 @@ Alternatively, if you don't want to save your password in a plain text file, use
 "C:\Program Files\PuTTY\plink.exe" ssh -f YourUsername@papio.biology.duke.edu -L 2222:localhost:5432 -N"
 ```
 
-- Save the batch file somewhere convenient with a name like "babase_tunnel.bat""
+- Save the batch file somewhere convenient with a name like "babase_tunnel.bat"
 
 - Open the SSH tunnel
     a. Run the batch file that you just created by double clicking on it.
