@@ -89,7 +89,7 @@ This is a little more complicated. I don't have a Windows machine to test it on,
     3.  Once the installation is complete, note the location where PuTTY was installed. It should be in:
         1.  `C:\Program Files (x86)\PuTTY\` or
         2.  `C:\Program Files\PuTTY\`
--   Create a Batch File that will Open the SSH Tunnel
+-   Create a batch file that will open the SSH tunnel
     1.  Open Notepad or any other text editor.
     2.  Type in the following text, all on one line, *including the quotation marks,* replacing "YourUsername" with your username, and replacing "YourPassword" with your password. Note that you may need to replace "Program Files" with "Program Files (x86)"
 
@@ -103,7 +103,7 @@ Alternatively, if you don't want to save your password in a plain text file, use
 
 -   Save the batch file somewhere convenient with a name like "babase\_tunnel.bat""
 
--   Open the SSH Tunnel
+-   Open the SSH tunnel
     1.  Run the batch file that you just created by double clicking on it.
     2.  If there is an error, the window will close on its own, you will have no tunnel, and you will need to correct the errors!
     3.  If you are successful, a command prompt window will display the text in the batch file, along with a message.
