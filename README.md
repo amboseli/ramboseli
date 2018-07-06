@@ -27,8 +27,8 @@ After you have installed the package once, you can simply load it in the future 
 Current functionality provided by the package:
 ----------------------------------------------
 
+-   [Sociality Indices](documentation/sociality-indices.md)
 -   [Plotting helpers and functions](documentation/plotting.md)
--   [Group membership](documentation/group-membership.md)
 
 <br>
 
