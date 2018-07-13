@@ -149,6 +149,8 @@ saveRDS(gca_dsi_summary, file = paste0("data/gca-dsi-summary_", Sys.Date(), ".RD
 
 # target-date-offspring-dob -----------------------------------------------
 
+biograph <- tbl(babase, "biograph")
+
 kids <- tbl(babase, "parents") %>%
   select(mom, kid) %>%
   inner_join(select(biograph, kid = sname, kid_birth = birth, kid_sex = sex,
