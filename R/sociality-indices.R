@@ -823,7 +823,7 @@ dyadic_index_summary <- function(df) {
   else {
     di_strength <- di_strength %>%
       dplyr::mutate(DSI_type = case_when(
-        sex == "M" & dyad_type == "M-M" ~ "DSI_F",
+        sex == "M" & dyad_type == "M-M" ~ "DSI_M",
         sex == "M" & dyad_type == "F-M" ~ "DSI_F",
         sex == "F" & dyad_type == "F-M" ~ "DSI_M",
         sex == "F" & dyad_type == "F-F" ~ "DSI_F"),
