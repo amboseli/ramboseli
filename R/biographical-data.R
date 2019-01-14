@@ -2,12 +2,13 @@
 #' Obtain a subset of members table that excludes behavioral observation gaps.
 #'
 #' @param babase A DBI connection to the babase database
+#' @param .adults_only Logical indicating whether to include adults only. Default is TRUE
 #'
 #' @return A subset of the members table that excludes behavioral observation gaps.
 #' @export
 #'
 #' @examples
-subset_members <- function(babase) {
+subset_members <- function(babase, .adults_only = TRUE) {
 
   if (class(babase) != "PostgreSQLConnection") {
     stop("Invalid connection to babase.")
@@ -35,7 +36,12 @@ subset_members <- function(babase) {
   # For each animal/year-of-life, find all groups that the animal was a member of
   # members-query -----------------------------------------------------------
 
-  message("Obtaining members data from all adult females (matured) and males (ranked)...")
+  if (.adults_only) {
+    message("Obtaining members data from all adult females (matured) and males (ranked)...")
+  }
+  else {
+    message("Obtaining members data from all females and males...")
+  }
 
   members_keep <- members %>%
     dplyr::inner_join(dplyr::select(biograph, sname, sex), by = "sname") %>%
@@ -45,8 +51,12 @@ subset_members <- function(babase) {
                       by = c("grp" = "gid")) %>%
     dplyr::filter(grp < 3 & grp != 1.3 & grp != 1.4 & date >= permanent &
                     (is.na(impermanent) | date <= impermanent) &
-                    (is.na(last_reg_census) | date <= last_reg_census) &
-                    ((sex == "F" & date >= matured) | (sex == "M" & date >= ranked)))
+                    (is.na(last_reg_census) | date <= last_reg_census))
+
+  if (.adults_only) {
+    members_keep <- members_keep %>%
+      dplyr::filter((sex == "F" & date >= matured) | (sex == "M" & date >= ranked))
+    }
 
   # Find behavior gaps that overlap records in members_keep
   bg <- members_keep %>%
@@ -109,7 +119,7 @@ subset_members <- function(babase) {
 }
 
 
-#' Obtain a subset of focal samples that excludes behavioral observation gaps.
+#' Obtain a subset of adult female focal samples that excludes behavioral observation gaps.
 #'
 #' @param babase A DBI connection to the babase database
 #' @param members_l A subset of members table produced by the function 'subset_members'
@@ -195,7 +205,7 @@ subset_focals <- function(babase, members_l) {
 }
 
 
-#' Obtain a subset of female count data that excludes behavioral observation gaps.
+#' Obtain a subset of adult female count data that excludes behavioral observation gaps.
 #'
 #' @param members_l A subset of members table produced by the function 'subset_members'
 #'
@@ -209,7 +219,7 @@ subset_females <- function(members_l) {
 
   ## Get a count of number of adult females per day in a grp
   females_l <- members_l %>%
-    dplyr::filter(sex == "F") %>%
+    dplyr::filter(sex == "F" & date >= matured) %>%
     dplyr::group_by(grp, date) %>%
     dplyr::summarise(nr_females = n()) %>%
     dplyr::ungroup()
@@ -223,12 +233,13 @@ subset_females <- function(members_l) {
 #'
 #' @param babase A DBI connection to the babase database
 #' @param members_l A subset of members table produced by the function 'subset_members'
+#' @param .adults_only Logical indicating whether to include adults only. Default is TRUE
 #'
 #' @return A subset of grooming data that excludes behavioral observation gaps.
 #' @export
 #'
 #' @examples
-subset_interactions <- function(babase, members_l, my_acts = NULL) {
+subset_interactions <- function(babase, members_l, my_acts = NULL, .adults_only = TRUE) {
 
   if (class(babase) != "PostgreSQLConnection") {
     stop("Invalid connection to babase.")
@@ -308,18 +319,32 @@ subset_interactions <- function(babase, members_l, my_acts = NULL) {
     dplyr::left_join(dplyr::select(rankdates_l, sname, actee_ranked = ranked),
                      by = c("actee" = "sname"))
 
-  inter <- inter %>%
-    dplyr::filter(((actor_sex == "F" & date >= actor_matured) |
-                     (actor_sex == "M" & date >= actor_ranked)) &
-                    ((actee_sex == "F" & date >= actee_matured) |
-                       (actee_sex == "M" & date >= actee_ranked)))
-
+  if (.adults_only) {
+    inter <- inter %>%
+      dplyr::filter(((actor_sex == "F" & date >= actor_matured) |
+                       (actor_sex == "M" & date >= actor_ranked)) &
+                      ((actee_sex == "F" & date >= actee_matured) |
+                         (actee_sex == "M" & date >= actee_ranked)))
+  }
 
   inter$yearmon <- as.character(zoo::as.yearmon(inter$date))
 
+  if (.adults_only) {
+    inter$is_actor_adult <- TRUE
+    inter$is_actee_adult <- TRUE
+  }
+  else {
+    inter <- inter %>%
+      dplyr::mutate(is_actor_adult = (actor_sex == "F" & date >= actor_matured) |
+               (actor_sex == "M" & date >= actor_ranked),
+             is_actee_adult = (actee_sex == "F" & date >= actee_matured) |
+               (actee_sex == "M" & date >= actee_ranked)) %>%
+      tidyr::replace_na(list(is_actor_adult = FALSE, is_actee_adult = FALSE))
+  }
+
   inter <- inter %>%
     dplyr::select(iid, sid, act, actor, actee, actor_sex, actee_sex, date,
-                  yearmon, actor_grp, actee_grp)
+                  yearmon, actor_grp, actee_grp, is_actor_adult, is_actee_adult)
 
   # If user requested grooming data, deal with first-of-month issue
 
@@ -426,7 +451,7 @@ subset_interactions <- function(babase, members_l, my_acts = NULL) {
 }
 
 
-#' Create a data frame for each adult individual year of life
+#' Create a data frame for each individual year of life (by default, for adults only)
 #'
 #' @param babase A DBI connection to the babase database
 #' @param members_l A subset of members table produced by the function 'subset_members'
@@ -601,6 +626,7 @@ make_iyol <- function(babase, members_l, focals_l = NULL, interactions_l = NULL,
 
   return(iyol)
 }
+
 
 #' Create a data frame with year-long intervals prior to specific target dates
 #'
