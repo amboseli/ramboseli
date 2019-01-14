@@ -633,6 +633,7 @@ make_iyol <- function(babase, members_l, focals_l = NULL, interactions_l = NULL,
 #' @param target_df A data frame that includes the columns sname, sex, grp, and date
 #' @param babase A DBI connection to the babase database
 #' @param members_l A subset of members table produced by the function 'subset_members'
+#' @param window_length Length in years of the time window for the social index
 #' @param .by_grp Logical indicating whether to separate by group. Default is TRUE
 #' @param .adults_only Logical indicating whether to include adults only. Default is TRUE
 #'
@@ -640,7 +641,7 @@ make_iyol <- function(babase, members_l, focals_l = NULL, interactions_l = NULL,
 #' @export
 #'
 #' @examples
-make_target_date_df <- function(target_df, babase, members_l, .by_grp = TRUE,
+make_target_date_df <- function(target_df, babase, members_l, window_length = 1, .by_grp = TRUE,
                                 .adults_only = TRUE) {
 
   if (class(babase) != "PostgreSQLConnection") {
@@ -649,8 +650,8 @@ make_target_date_df <- function(target_df, babase, members_l, .by_grp = TRUE,
 
   # Return an empty tibble if the subset is empty
   if (is.null(target_df) |
-      !all(c("sname", "grp", "sex", "date") %in% names(target_df))) {
-    stop("Problem with input data. Target data frame must include rows 'sname', 'sex', 'grp', and 'date'.")
+      !all(c("sname", "sex", "date") %in% names(target_df))) {
+    stop("Problem with input data. Target data frame must include rows 'sname', 'sex', and 'date'.")
   }
 
   # babase-tables -----------------------------------------------------------
@@ -684,17 +685,36 @@ make_target_date_df <- function(target_df, babase, members_l, .by_grp = TRUE,
     dplyr::left_join(dplyr::select(rd_males, sname, ranked), by = "sname") %>%
     dplyr::select(sname, obs_date = date, sex, birth, statdate, matured, ranked)
 
-  target_df <- target_df %>%
-    dplyr::mutate(first_start_date = dplyr::case_when(
-      sex == "F" ~ matured,
-      sex == "M" ~ ranked
-    )) %>%
-    dplyr::select(sname, obs_date, sex, birth, first_start_date, statdate, -ranked, -matured)
+  if (.adults_only) {
+    target_df <- target_df %>%
+      dplyr::mutate(first_start_date = dplyr::case_when(
+        sex == "F" ~ matured,
+        sex == "M" ~ ranked
+      )) %>%
+      tidyr::drop_na(first_start_date) %>%
+      dplyr::select(sname, obs_date, sex, birth, first_start_date, statdate, -ranked, -matured)
+  }
+  else {
+    target_df <- target_df %>%
+      dplyr::mutate(first_start_date = dplyr::case_when(
+        sex == "F" ~ birth,
+        sex == "M" ~ birth
+      )) %>%
+      tidyr::drop_na(first_start_date) %>%
+      dplyr::select(sname, obs_date, sex, birth, first_start_date, statdate, -ranked, -matured)
+  }
+
+  # target_df <- target_df %>%
+  #   dplyr::mutate(first_start_date = dplyr::case_when(
+  #     sex == "F" ~ matured,
+  #     sex == "M" ~ ranked
+  #   )) %>%
+  #   dplyr::select(sname, obs_date, sex, birth, first_start_date, statdate, -ranked, -matured)
 
   target_df <- target_df %>%
     dplyr::mutate(start = dplyr::case_when(
-      first_start_date >= obs_date - lubridate::years(1) + days(1) ~ first_start_date,
-      TRUE ~ obs_date - lubridate::years(1) + days(1)))
+      first_start_date >= obs_date - lubridate::years(window_length) + days(1) ~ first_start_date,
+      TRUE ~ obs_date - lubridate::years(window_length) + days(1)))
 
   target_df <- target_df %>%
     dplyr::mutate(end = obs_date) %>%
