@@ -38,8 +38,7 @@ subset_members <- function(babase, .adults_only = TRUE) {
 
   if (.adults_only) {
     message("Obtaining members data from all adult females (matured) and males (ranked)...")
-  }
-  else {
+  } else {
     message("Obtaining members data from all females and males...")
   }
 
@@ -332,8 +331,7 @@ subset_interactions <- function(babase, members_l, my_acts = NULL, .adults_only 
   if (.adults_only) {
     inter$is_actor_adult <- TRUE
     inter$is_actee_adult <- TRUE
-  }
-  else {
+  } else {
     inter <- inter %>%
       dplyr::mutate(is_actor_adult = (actor_sex == "F" & date >= actor_matured) |
                (actor_sex == "M" & date >= actor_ranked),
@@ -518,8 +516,7 @@ make_iyol <- function(babase, members_l, focals_l = NULL, interactions_l = NULL,
       )) %>%
       tidyr::drop_na(first_start_date) %>%
       dplyr::select(sname, sex, birth, first_start_date, statdate, -ranked, -matured)
-  }
-  else {
+  } else {
     iyol <- iyol %>%
       dplyr::mutate(first_start_date = dplyr::case_when(
         sex == "F" ~ birth,
@@ -592,8 +589,7 @@ make_iyol <- function(babase, members_l, focals_l = NULL, interactions_l = NULL,
     iyol <- zdata %>%
       dplyr::inner_join(iyol, by = c("sname", "start", "end")) %>%
       dplyr::arrange(sname, grp, start, end)
-  }
-  else {
+  } else {
     ## Check how many days the focal was present in ANY group in a focal year
     temp <- iyol %>%
       dplyr::inner_join(dplyr::select(members_l, sname, date), by = c("sname")) %>%
@@ -693,8 +689,7 @@ make_target_date_df <- function(target_df, babase, members_l, window_length = 1,
       )) %>%
       tidyr::drop_na(first_start_date) %>%
       dplyr::select(sname, obs_date, sex, birth, first_start_date, statdate, -ranked, -matured)
-  }
-  else {
+  } else {
     target_df <- target_df %>%
       dplyr::mutate(first_start_date = dplyr::case_when(
         sex == "F" ~ birth,
@@ -750,8 +745,7 @@ make_target_date_df <- function(target_df, babase, members_l, window_length = 1,
       dplyr::inner_join(target_df, by = c("sname", "start", "end")) %>%
       dplyr::arrange(sname, grp, start, end) %>%
       dplyr::select(-rowname)
-  }
-  else {
+  } else {
     ## Check how many days the focal was present in ANY group in a focal year
     # temp <- target_df %>%
     #   dplyr::inner_join(dplyr::select(members_l, sname, date), by = c("sname")) %>%

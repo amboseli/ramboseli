@@ -231,8 +231,7 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
                        " cores are available."))
         ncores <- avail_cores
       }
-    }
-    else {
+    } else {
       message(paste0("Using all available cores: ", avail_cores,
                      ". Use 'ncores' to specify number of cores to use."))
       ncores <- avail_cores
@@ -252,8 +251,7 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
     close(pb)
     stopCluster(cl)
     my_iyol <- add_column(my_iyol, subset)
-  }
-  else {
+  } else {
     if (!is.null(ncores)) {
       message("Ignoring 'ncores' argument because 'parallel' set to FALSE.")
     }
@@ -328,8 +326,7 @@ dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, in
                        " cores are available."))
         ncores <- avail_cores
       }
-    }
-    else {
+    } else {
       message(paste0("Using all available cores: ", avail_cores,
                      ". Use 'ncores' to specify number of cores to use."))
       ncores <- avail_cores
@@ -350,8 +347,7 @@ dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, in
     close(pb)
     stopCluster(cl)
     my_iyol <- add_column(my_iyol, subset)
-  }
-  else {
+  } else {
     if (!is.null(ncores)) {
       message("Ignoring 'ncores' argument because 'parallel' set to FALSE.")
     }
@@ -469,8 +465,7 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
       dplyr::summarise(days_present = n(),
                        start = min(date),
                        end = max(date))
-  }
-  else {
+  } else {
     my_members <- dplyr::filter(members_l, date >= my_start & date <= my_end)
     my_focals <- dplyr::filter(focals_l, date >= my_start & date <= my_end)
     my_females <- dplyr::filter(females_l, date >= my_start & date <= my_end)
@@ -603,10 +598,8 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
     my_subset <- my_subset %>%
       dplyr::select(sname, sname_sex, partner, partner_sex, everything()) %>%
       dplyr::arrange(sname, partner)
-  }
-
-  # Behaviors for which direction needs to be preserved, e.g., agonism
-  else {
+  } else {
+    # Behaviors for which direction needs to be preserved, e.g., agonism
 
     # Duplicate each row to have one for sname->partner and one for partner->sname:
     sub_d1 <- my_subset %>%
@@ -684,8 +677,7 @@ fit_dyadic_regression <- function(df) {
 
     # Combine with zero and non-zero subsets
     df <- dplyr::bind_rows(zero_subset, nonzero_subset)
-  }
-  else {
+  } else {
     df$res_i_adj <- as.numeric(residuals(lm(data = df, log2_i_adj ~ log2OE)))
   }
 
@@ -819,8 +811,7 @@ dyadic_index_summary <- function(df) {
       dplyr::select(-dyad_type, -direction) %>%
       tidyr::spread(DSI_type, r_reciprocity) %>%
       dplyr::select(sname, grp, start, end, contains("recip"))
-  }
-  else {
+  } else {
     di_strength <- di_strength %>%
       dplyr::mutate(DSI_type = case_when(
         sex == "M" & dyad_type == "M-M" ~ "DSI_M",
@@ -921,8 +912,7 @@ dyadic_row_summary <- function(df, focal, directional) {
       dplyr::group_by(dyad_type, direction) %>%
       dplyr::summarise(r_reciprocity = mean(recip, na.rm = TRUE),
                        n = n())
-  }
-  else {
+  } else {
     # Relationship quantity is the number of bonds in each bond-strength category
     r_quantity <- df %>%
       dplyr::group_by(dyad_type) %>%
