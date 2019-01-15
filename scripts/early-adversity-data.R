@@ -381,7 +381,7 @@ get_season <- function(d) {
   return(season)
 }
 
-# Function to calculate rain average rain during a givendate window
+# Function to calculate rain average rain during a given date window
 get_rain_normal <- function(rain_df, date_col, rain_col, d_start, d_end) {
 
   if (d_end < d_start) message("Error: end date before start date.")
@@ -395,7 +395,7 @@ get_rain_normal <- function(rain_df, date_col, rain_col, d_start, d_end) {
     complete(date_of = full_seq(date_of, 1), fill = list(rain = 0)) %>%
     mutate(yday = yday(!!date_col))
 
-  if(yday_end > yday_start) {
+  if (yday_end > yday_start) {
 
     # Time interval is split across calendar years
     r <- rain_df %>%
