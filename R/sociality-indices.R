@@ -843,7 +843,7 @@ dyadic_index_summary <- function(df) {
         sex = forcats::fct_recode(sex, Male = "M", Female = "F")) %>%
       dplyr::select(-dyad_type) %>%
       tidyr::spread(DSI_type, r_strength) %>%
-      dplyr::select(sname, grp, start, end, DSI_F, DSI_M)
+      dplyr::select_if(names(.) %in% c("sname", "grp", "start", "end", "DSI_F", "DSI_M"))
 
     di_quantity <- df %>%
       dplyr::select(-top_partners, -r_strength, -r_reciprocity) %>%
@@ -869,7 +869,7 @@ dyadic_index_summary <- function(df) {
         sex = forcats::fct_recode(sex, Male = "M", Female = "F")) %>%
       dplyr::select(-dyad_type) %>%
       tidyr::spread(DSI_type, r_reciprocity) %>%
-      dplyr::select(sname, grp, start, end, recip_F, recip_M)
+      dplyr::select_if(names(.) %in% c("sname", "grp", "start", "end", "recip_F", "recip_M"))
   }
 
   di_summary <- df %>%
