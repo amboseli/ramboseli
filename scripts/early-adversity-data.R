@@ -268,6 +268,13 @@ subjects <- subjects %>%
   arrange(birth)
 
 
+# ---- WRITE-ADVERSITY-FILE -----------------------------------------------
+
+write_csv(subjects, paste0("early-adversity-subjects_", Sys.Date(), ".csv"))
+
+
+
+
 
 # ---- COVARIATES-FOR-GC --------------------------------------------------
 
