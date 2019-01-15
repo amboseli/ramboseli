@@ -397,7 +397,6 @@ get_rain_normal <- function(rain_df, date_col, rain_col, d_start, d_end) {
 
   if (yday_end > yday_start) {
 
-    # Time interval is split across calendar years
     r <- rain_df %>%
       filter(yday >= yday_start & yday <= yday_end) %>%
       mutate(year_of = year(!!date_col)) %>%
@@ -411,7 +410,7 @@ get_rain_normal <- function(rain_df, date_col, rain_col, d_start, d_end) {
 
     return(mean(r$sum_rain))
 
-  } else {
+  } else { # Time interval is split across calendar years
     r <- rain_df %>%
       filter(yday >= yday_start | yday <= yday_end) %>%
       mutate(year_of = year(!!date_col),
