@@ -450,10 +450,21 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
   # Put some subsets in environment for faster performance
   if (within_grp) {
     my_members <- dplyr::filter(members_l, grp == my_grp & date >= my_start & date <= my_end)
+
+    # This line allows for the focal animal only to be represented as a non-adult
+    my_members <- dplyr::filter(my_members, (sex == "F" & (date >= matured | sname == my_sname)) |
+                                  (sex == "M" & (date >= ranked | sname == my_sname)))
+
     my_focals <- dplyr::filter(focals_l, grp == my_grp & date >= my_start & date <= my_end)
     my_females <- dplyr::filter(females_l, grp == my_grp & date >= my_start & date <= my_end)
     my_interactions <- interactions_l %>%
       dplyr::filter((actor_grp == my_grp | actee_grp == my_grp) & date >= my_start & date <= my_end)
+
+    # This line allows for the focal animal only to be represented as a non-adult
+    my_interactions <- my_interactions %>%
+      dplyr::filter((is_actor_adult & is_actee_adult) |
+                      (is_actor_adult & actee == my_sname) |
+                      (is_actee_adult & actor == "my_sname"))
 
     # Find all distinct members WITHIN GROUP between start and end dates
     # For each animal in each group durign this time, calculate:
@@ -467,10 +478,21 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
                        end = max(date))
   } else {
     my_members <- dplyr::filter(members_l, date >= my_start & date <= my_end)
+
+    # This line allows for the focal animal only to be represented as a non-adult
+    my_members <- dplyr::filter(my_members, (sex == "F" & (date >= matured | sname == my_sname)) |
+                                  (sex == "M" & (date >= ranked | sname == my_sname)))
+
     my_focals <- dplyr::filter(focals_l, date >= my_start & date <= my_end)
     my_females <- dplyr::filter(females_l, date >= my_start & date <= my_end)
-    my_interactions <- interactions_l %>%
-      dplyr::filter(date >= my_start & date <= my_end)
+
+    my_interactions <- dplyr::filter(interactions_l, date >= my_start & date <= my_end)
+
+    # This line allows for the focal animal only to be represented as a non-adult
+    my_interactions <- my_interactions %>%
+      dplyr::filter((is_actor_adult & is_actee_adult) |
+                      (is_actor_adult & actee == my_sname) |
+                      (is_actee_adult & actor == "my_sname"))
 
     if (any(map_int(list(my_members, my_females, my_focals, my_interactions),
                     nrow) == 0)) {
