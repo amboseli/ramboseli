@@ -56,6 +56,7 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
 
   zero_daily_count <- 1/365.25
   log_zero_daily_count <- log2(zero_daily_count)
+  my_sname <- df$sname
 
   # Get all members of same sex as the focal animal during relevant time period
   my_subset <- members_l %>%
@@ -65,6 +66,13 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
     dplyr::summarise(days_present = n(),
                      start = min(date),
                      end = max(date))
+
+  # To allow focal animal only to be a non-adult (for early adversity analysis)
+  # Should not otherwise affect results
+  my_interactions <- interactions_l %>%
+    dplyr::filter((is_actor_adult & is_actee_adult) |
+                    (is_actor_adult & actee == my_sname) |
+                    (is_actee_adult & actor == my_sname))
 
   ## Focal counts
   # Get all focals during relevant time period in grp
@@ -105,13 +113,13 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
     dplyr::filter(!is.na(OE))
 
   ## Interactions given to females by each actor of focal's sex
-  gg_f <- get_interaction_dates(my_subset, members_l, interactions_l,
+  gg_f <- get_interaction_dates(my_subset, members_l, my_interactions,
                                 quo(actee_sex), "actor", "F") %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(ItoF = n())
 
   ## Interactions received from females by each actee of focal's sex
-  gr_f <- get_interaction_dates(my_subset, members_l, interactions_l,
+  gr_f <- get_interaction_dates(my_subset, members_l, my_interactions,
                                 quo(actor_sex), "actee", "F") %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(IfromF = n())
@@ -119,17 +127,17 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
   # Calculate variables for interactions with males only if:
   # - the interactions are grooming AND the focal animal is female OR
   # - the interactions are anything but grooming
-  include_males <- interactions_l$act[[1]] != "G" | (interactions_l$act[[1]] == "G" & df$sex == "F")
+  include_males <- my_interactions$act[[1]] != "G" | (my_interactions$act[[1]] == "G" & df$sex == "F")
 
   if (include_males) {
     ## Interactions given to males by each actor of focal's sex
-    gg_m <- get_interaction_dates(my_subset, members_l, interactions_l,
+    gg_m <- get_interaction_dates(my_subset, members_l, my_interactions,
                                   quo(actee_sex), "actor", "M") %>%
       dplyr::group_by(grp, sname) %>%
       dplyr::summarise(ItoM = n())
 
     ## Interactions received from males by each actee of focal's sex
-    gr_m <- get_interaction_dates(my_subset, members_l, interactions_l,
+    gr_m <- get_interaction_dates(my_subset, members_l, my_interactions,
                                   quo(actor_sex), "actee", "M") %>%
       dplyr::group_by(grp, sname) %>%
       dplyr::summarise(IfromM = n())
@@ -464,7 +472,7 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
     my_interactions <- my_interactions %>%
       dplyr::filter((is_actor_adult & is_actee_adult) |
                       (is_actor_adult & actee == my_sname) |
-                      (is_actee_adult & actor == "my_sname"))
+                      (is_actee_adult & actor == my_sname))
 
     # Find all distinct members WITHIN GROUP between start and end dates
     # For each animal in each group durign this time, calculate:
@@ -492,7 +500,7 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
     my_interactions <- my_interactions %>%
       dplyr::filter((is_actor_adult & is_actee_adult) |
                       (is_actor_adult & actee == my_sname) |
-                      (is_actee_adult & actor == "my_sname"))
+                      (is_actee_adult & actor == my_sname))
 
     if (any(map_int(list(my_members, my_females, my_focals, my_interactions),
                     nrow) == 0)) {
