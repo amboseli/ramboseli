@@ -188,13 +188,13 @@ ranks <- tbl(babase, "ranks") %>%
   mutate(proprank = 1 - (rank - 1) / (n() - 1)) %>%
   collect() %>%
   make_date_cols(rnkdate) %>%
-  rename("mom_sname" = "sname") %>%
   ungroup()
 
 mom_rank <- moms %>%
   select(sname, mom_sname, birth, matgrp) %>%
   make_date_cols(birth) %>%
-  inner_join(ranks, by = c("mom_sname", "year_of", "month_of", "matgrp" = "grp"))
+  inner_join(rename(ranks, "mom_sname" = "sname"),
+             by = c("mom_sname", "year_of", "month_of", "matgrp" = "grp"))
 
 mom_rank_adv <- mom_rank %>%
   mutate(adv_mom_rank = rank > quantile(rank, probs = 0.75)) %>%
@@ -270,9 +270,9 @@ subjects <- subjects %>%
 
 # ---- WRITE-ADVERSITY-FILE -----------------------------------------------
 
-write_csv(subjects, paste0("early-adversity-subjects_", Sys.Date(), ".csv"))
-
-
+# write_csv(subjects, paste0("early-adversity-subjects_", Sys.Date(), ".csv"))
+saveRDS(mom_dsi_2yrs, paste0("data/mom_dsi_2yrs", Sys.Date(), ".RDS"))
+saveRDS(mom_dsi_summary, paste0("data/mom_dsi_summary_", Sys.Date(), ".RDS"))
 
 
 
@@ -616,14 +616,98 @@ gc <- gc %>%
 gcd <- make_target_date_df(select(gc, -birth), babase, members_l2, .adults_only = FALSE)
 
 # WARNING: this one takes several days to finish!
-gcd_dsi <- dyadic_index(gcd, biograph_l, members_l2, focals_l, females_l,
+gc_dsi <- dyadic_index(gcd, biograph_l, members_l2, focals_l, females_l,
                         grooming_l2, min_cores_days = 1, within_grp = FALSE,
                         parallel = TRUE, directional = FALSE)
 
-gcd_dsi_summary <- dyadic_index_summary(gcd_dsi)
+gc_dsi_summary <- dyadic_index_summary(gc_dsi)
 
-# The subject's SCI-F in the year prior to sample collection. For subjects who are age 4, this mean that some of the grooming interactions would occur when the subject is age 3.
-# The subject's SCI-M in the year prior to sample collection. For subjects who are age 4, this mean that some of the grooming interactions would occur when the subject is age 3. Note this can only be calculated for female subjects.
+# For animals in multiple groups during a given year,
+# average of DSI in each group weighted by days_present.
+# Also remove any DSI values based on fewer than 60 days present.
+gc_dsi_wt_avg <- gc_dsi_summary %>%
+  filter(days_present >= 60) %>%
+  mutate_at(vars(starts_with("DSI")), funs(wt = . * days_present)) %>%
+  group_by(sname, obs_date) %>%
+  summarise_at(vars(contains("_wt")),
+               funs(sum(., na.rm = TRUE) /
+                      sum(days_present * ifelse(is.na(.), NA, 1), na.rm = TRUE))) %>%
+  ungroup() %>%
+  mutate_at(vars(contains("_wt")), funs(replace_na(., NA))) %>%
+  rename(date = obs_date, DSI_F = DSI_F_wt, DSI_M = DSI_M_wt)
 
+gc <- gc %>%
+  left_join(select(gc_dsi_wt_avg, sname, date, DSI_F, DSI_M),
+            by = c("sname", "date"))
+
+saveRDS(gc_dsi, paste0("data/gc_dsi_", Sys.Date(), ".RDS"))
+saveRDS(gc_dsi_summary, paste0("data/gc_dsi_summary_", Sys.Date(), ".RDS"))
+
+
+# gc-cov-sci --------------------------------------------------------------
+
+# The subject's SCI-F in the year prior to sample collection. For subjects who are age 4, this mean that some of the grooming
+# interactions would occur when the subject is age 3.
+#
+# The subject's SCI-M in the year prior to sample collection. For subjects who are age 4, this mean that some of the grooming
+# interactions would occur when the subject is age 3. Note this can only be calculated for female subjects.
+#
+gc_sci <- sci(gcd, members_l2, focals_l, females_l, grooming_l2,
+              min_res_days = 60, parallel = TRUE)
+
+gc_sci_summary <- gc_sci %>%
+  select(sname, grp, days_present, obs_date, SCI_F, SCI_M)
+
+# For animals in multiple groups during a given year,
+# average of SCI in each group weighted by days_present.
+# This dataset is already restricted to >= 60 days present.
+gc_sci_wt_avg <- gc_sci_summary %>%
+  mutate_at(vars(starts_with("SCI")), funs(wt = . * days_present)) %>%
+  group_by(sname, obs_date) %>%
+  summarise_at(vars(contains("_wt")),
+               funs(sum(., na.rm = TRUE) /
+                      sum(days_present * ifelse(is.na(.), NA, 1), na.rm = TRUE))) %>%
+  ungroup() %>%
+  mutate_at(vars(contains("_wt")), funs(replace_na(., NA))) %>%
+  rename(date = obs_date, SCI_F = SCI_F_wt, SCI_M = SCI_M_wt)
+
+gc <- gc %>%
+  left_join(gc_sci_wt_avg, by = c("sname", "date"))
+
+saveRDS(gc_sci, paste0("data/gc_sci_", Sys.Date(), ".RDS"))
+
+
+# gc-cov-proprank ---------------------------------------------------------
 
 # The subject's proportional dominance rank in the month the sample was collected.
+
+ranks <- tbl(babase, "ranks")
+
+ranks_l <- ranks %>%
+  filter(rnktype %in% c("ADF", "ADM")) %>%
+  collect() %>%
+  group_by(grp, rnkdate, rnktype) %>%
+  mutate(proprank = 1 - (rank - 1) / (n() - 1)) %>%
+  make_date_cols(rnkdate) %>%
+  ungroup()
+
+# Proprank is NaN if there's only one individual of that age/sex class in the group
+ranks_l <- replace_na(ranks_l, list(proprank = 1))
+
+gc_rank <- gc %>%
+  select(sname, grp, date) %>%
+  make_date_cols(date) %>%
+  left_join(ranks_l, by = c("year_of", "month_of", "sname", "grp")) %>%
+  distinct()
+
+gc <- gc %>%
+  left_join(select(gc_rank, sname, grp, date, proprank), by = c("sname", "grp", "date"))
+
+
+
+# ---- WRITE-GC-COVARIATES-FILE -------------------------------------------
+
+write_csv(gc, paste0("data/gc_covariates_", Sys.Date(), ".csv"))
+
+subjects_small <- filter(subjects, sname %in% gc$sname)
+write_csv(subjects_small, paste0("data/early-adversity-subjects_", Sys.Date(), ".csv"))
