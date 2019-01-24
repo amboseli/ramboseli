@@ -97,8 +97,9 @@ adult_sex_counts <- adult_members %>%
 
 density_adv <- subjects %>%
   left_join(adult_sex_counts, by = c("birth" = "date", "matgrp" = "grp")) %>%
-  mutate(adv_density = n_adults > quantile(n_adults, probs = 0.75)) %>%
-  select(sname, adv_density)
+  mutate(thresh_density = quantile(n_adults, probs = 0.75),
+         adv_density = n_adults > thresh_density) %>%
+  select(sname, adv_density, density = n_adults, thresh_density)
 
 
 # adv-drought -------------------------------------------------------------
@@ -128,7 +129,7 @@ rain_1_yr <- rain_1_yr %>%
   mutate(adv_rain = total_rain <= 200)
 
 rain_adv <- rain_1_yr %>%
-  select(sname, adv_rain)
+  select(sname, adv_rain, rain = total_rain)
 
 
 # adv-maternal-loss -------------------------------------------------------
@@ -197,8 +198,9 @@ mom_rank <- moms %>%
              by = c("mom_sname", "year_of", "month_of", "matgrp" = "grp"))
 
 mom_rank_adv <- mom_rank %>%
-  mutate(adv_mom_rank = rank > quantile(rank, probs = 0.75)) %>%
-  select(sname, adv_mom_rank)
+  mutate(thresh_rank = quantile(proprank, probs = 0.25),
+         adv_mom_rank = proprank < thresh_rank) %>%
+  select(sname, adv_mom_rank, mom_rank = proprank, thresh_rank)
 
 
 # adv-maternal-dsi --------------------------------------------------------
@@ -245,10 +247,11 @@ mom_dsi_wt_avg <- mom_dsi_summary %>%
   ungroup()
 
 mom_dsi_adv <- mom_dsi_wt_avg %>%
-  mutate(adv_mom_dsi = DSI_F_wt < quantile(DSI_F_wt, probs = 0.25)) %>%
-  select(mom_sname = sname, birth = start, adv_mom_dsi) %>%
+  mutate(thresh_dsi = quantile(DSI_F_wt, probs = 0.25),
+         adv_mom_dsi = DSI_F_wt < thresh_dsi) %>%
+  select(mom_sname = sname, birth = start, adv_mom_dsi, mom_dsi = DSI_F_wt, thresh_dsi) %>%
   right_join(select(moms, sname, birth, mom_sname), by = c("mom_sname", "birth")) %>%
-  select(sname, adv_mom_dsi)
+  select(sname, adv_mom_dsi, mom_dsi, thresh_dsi)
 
 
 # adv-join-gc -------------------------------------------------------------
@@ -264,8 +267,9 @@ subjects <- subjects %>%
 subjects <- drop_na(subjects)
 
 subjects <- subjects %>%
-  mutate(adv_cumulative = rowSums(.[9:14])) %>%
-  arrange(birth)
+mutate(adv_cumulative = rowSums(.[str_detect(names(subjects), "adv_")])) %>%
+arrange(birth)
+
 
 
 # ---- WRITE-ADVERSITY-FILE -----------------------------------------------
