@@ -346,20 +346,29 @@ gc <- gc %>%
 amb_temp <- tbl(babase, "min_maxs") %>%
   collect() %>%
   mutate(date = as.Date(wrdaytime)) %>%
-  select(date, tempmin, tempmax)
+  select(date, wstation, tempmin, tempmax)
 
 # Deal with a couple of duplicated dates
 amb_temp <- amb_temp %>%
-  group_by(date) %>%
-  summarise(tempmin = mean(tempmin, na.rm = TRUE),
-            tempmax = mean(tempmax, na.rm = TRUE))
+  group_by(date, wstation) %>%
+  summarise(tempmax = mean(tempmax, na.rm = TRUE)) %>%
+  ungroup() %>%
+  drop_na(tempmax)
+
+# Model to correct for weather station effects
+tmax_mod <- lme4::lmer(tempmax ~ 1 + (1 | wstation), data = amb_temp)
+
+# Augment original data set with corrected values
+tmax_aug <- tbl_df(augment(tmax_mod, amb_temp)) %>%
+  mutate(tempmax_cor = .fixed + .resid) %>%
+  select(date, wstation, tempmax_obs = tempmax, tempmax_cor)
 
 # Generate full sequence of dates and fill with NA values
-amb_temp <- amb_temp %>%
+amb_temp <- tmax_aug %>%
   complete(date = full_seq(date, 1))
 
 # Calculate mean tempmax over 30-day sliding window that is right-aligned to sample collection date
-amb_temp$mean_tmax_30d <- RcppRoll::roll_meanr(amb_temp$tempmax, n = 30, na.rm = TRUE)
+amb_temp$mean_tmax_30d <- RcppRoll::roll_meanr(amb_temp$tempmax_cor, n = 30, na.rm = TRUE)
 
 # Join to GC data
 gc <- gc %>%
