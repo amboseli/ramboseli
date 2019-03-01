@@ -58,8 +58,12 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
   log_zero_daily_count <- log2(zero_daily_count)
   my_sname <- df$sname
 
+  # Allow focal animal only to be a non-adult (for early adversity analysis)
+  my_members <- members_l %>%
+    filter(sname == my_sname | (sex == "F" & date >= matured) | (sex == "M" & date >= ranked))
+
   # Get all members of same sex as the focal animal during relevant time period
-  my_subset <- members_l %>%
+  my_subset <- my_members %>%
     dplyr::inner_join(select(df, -sname, -grp), by = c("sex")) %>%
     dplyr::filter(date >= start & date <= end) %>%
     dplyr::group_by(sname, grp) %>%
@@ -67,8 +71,7 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
                      start = min(date),
                      end = max(date))
 
-  # To allow focal animal only to be a non-adult (for early adversity analysis)
-  # Should not otherwise affect results
+  # Allow focal animal only to be a non-adult (for early adversity analysis)
   my_interactions <- interactions_l %>%
     dplyr::filter((is_actor_adult & is_actee_adult) |
                     (is_actor_adult & actee == my_sname) |
@@ -76,7 +79,7 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
 
   ## Focal counts
   # Get all focals during relevant time period in grp
-  my_focals <- get_mem_dates(my_subset, members_l, focals_l, sel = quo(sum))
+  my_focals <- get_mem_dates(my_subset, my_members, focals_l, sel = quo(sum))
 
   ## Observation days
   # Focal animal was present and at least one focal sample was collected
@@ -92,7 +95,7 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
     dplyr::summarise(n_focals = sum(sum))
 
   ## Female counts
-  my_females <- get_mem_dates(my_subset, members_l, females_l, sel = quo(nr_females)) %>%
+  my_females <- get_mem_dates(my_subset, my_members, females_l, sel = quo(nr_females)) %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(mean_f_count = mean(nr_females))
 
@@ -113,13 +116,13 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
     dplyr::filter(!is.na(OE))
 
   ## Interactions given to females by each actor of focal's sex
-  gg_f <- get_interaction_dates(my_subset, members_l, my_interactions,
+  gg_f <- get_interaction_dates(my_subset, my_members, my_interactions,
                                 quo(actee_sex), "actor", "F") %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(ItoF = n())
 
   ## Interactions received from females by each actee of focal's sex
-  gr_f <- get_interaction_dates(my_subset, members_l, my_interactions,
+  gr_f <- get_interaction_dates(my_subset, my_members, my_interactions,
                                 quo(actor_sex), "actee", "F") %>%
     dplyr::group_by(grp, sname) %>%
     dplyr::summarise(IfromF = n())
@@ -131,13 +134,13 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
 
   if (include_males) {
     ## Interactions given to males by each actor of focal's sex
-    gg_m <- get_interaction_dates(my_subset, members_l, my_interactions,
+    gg_m <- get_interaction_dates(my_subset, my_members, my_interactions,
                                   quo(actee_sex), "actor", "M") %>%
       dplyr::group_by(grp, sname) %>%
       dplyr::summarise(ItoM = n())
 
     ## Interactions received from males by each actee of focal's sex
-    gr_m <- get_interaction_dates(my_subset, members_l, my_interactions,
+    gr_m <- get_interaction_dates(my_subset, my_members, my_interactions,
                                   quo(actor_sex), "actee", "M") %>%
       dplyr::group_by(grp, sname) %>%
       dplyr::summarise(IfromM = n())
