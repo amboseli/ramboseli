@@ -374,6 +374,11 @@ dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, in
     close(pb)
   }
 
+  # Apply universal slope correction
+  # This replaces all the res_i_adj values in each subset
+  my_iyol <- apply_universal_slope(my_iyol)
+
+  # Create focal summaries
   my_iyol <- my_iyol %>%
     dplyr::mutate(di = purrr::pmap(list(sname, grp, subset), get_focal_index))
 
@@ -384,6 +389,64 @@ dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, in
                  round(tdiff / 60, 3), ") hours."))
 
   return(my_iyol)
+}
+
+
+#' Apply universal slope correction to DSI
+#'
+#' @param data A full DSI data set including the subset list-column
+#'
+#' @return The full DSI data set with the res_i_adj values replaced by their universal-slope equivalents.
+#'
+#' @examples
+apply_universal_slope <- function(data) {
+
+  # Apply universal slope correction
+  keep <- data %>%
+    select(-di) %>%
+    unnest() %>%
+    filter(log2_i_adj > -999)
+
+  dsi_universal_slopes <- keep %>%
+    group_by(sex, dyad_type) %>%
+    summarise(univ = list(lm(log2_i_adj ~ log2OE))) %>%
+    mutate(coefs = map(univ, broom::tidy)) %>%
+    select(-univ) %>%
+    unnest() %>%
+    select(sex, dyad_type, term, estimate) %>%
+    spread(term, estimate) %>%
+    rename("B0" = `(Intercept)`, "B1" = "log2OE")
+
+  universal_dsi_slope_values <- function(my_df, focal_sname, focal_grp, focal_sex) {
+
+    keep_out <- my_df %>%
+      filter(i_total == 0)
+
+    sv <- dsi_universal_slopes %>%
+      filter(sex == focal_sex)
+
+    res <- my_df %>%
+      inner_join(sv, by = "dyad_type")
+
+    res <- res %>%
+      filter(i_adj > 0) %>%
+      group_by(dyad_type) %>%
+      mutate(res_i_adj = log2_i_adj - (B0 + (B1 * log2OE))) %>%
+      ungroup()
+
+    res <- res %>%
+      group_by(dyad_type) %>%
+      mutate(res_i_adj = scale_num(res_i_adj)) %>%
+      select(-B0, -B1, -sex) %>%
+      bind_rows(keep_out) %>%
+      arrange(sname, grp, dyad_type, partner)
+
+  }
+
+  data_univ <- data %>%
+    mutate(subset = pmap(.l = list(subset, sname, grp, sex), .f = universal_dsi_slope_values))
+
+  return(data_univ)
 }
 
 
