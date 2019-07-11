@@ -45,3 +45,7 @@ make_date_cols <- function(df, date_col) {
   return(res)
 
 }
+
+scale_num <- function(x) {
+  return(as.numeric(scale(x)))
+}
