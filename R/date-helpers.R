@@ -46,6 +46,15 @@ make_date_cols <- function(df, date_col) {
 
 }
 
+
+#' Helper for z-scoring
+#'
+#' @param x
+#'
+#' @return
+#' @export
+#'
+#' @examples
 scale_num <- function(x) {
   return(as.numeric(scale(x)))
 }
