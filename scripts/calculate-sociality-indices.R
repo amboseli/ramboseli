@@ -50,7 +50,7 @@ saveRDS(iyol, paste0("data/iyol_", Sys.Date(), ".RDS"))
 
 ## Restrict to groups where the animal was present for at least 60 days
 iyol_sub <- iyol %>%
-  filter(days_present >= 1)
+  filter(days_present >= 60)
 
 
 
@@ -71,7 +71,7 @@ iyol_sub <- iyol %>%
 
 # Calculate grooming social connectedness index
 sci <- sci(iyol_sub, members_l, focals_l, females_l, grooming_l,
-           min_res_days = 1, parallel = TRUE)
+           min_res_days = 60, parallel = TRUE)
 
 saveRDS(sci, paste0("data/sci_", Sys.Date(), ".RDS"))
 
