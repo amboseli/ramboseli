@@ -403,7 +403,6 @@ apply_universal_slope <- function(data) {
 
   # Apply universal slope correction
   keep <- data %>%
-    select(-di) %>%
     unnest() %>%
     filter(log2_i_adj > -999)
 
