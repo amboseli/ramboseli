@@ -52,7 +52,7 @@ get_interaction_dates <- function(my_sub, members_l, df, my_sex_var, my_role, my
 #'
 #' @examples
 get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
-                           min_res_days, directional) {
+                           min_res_days, directional, legacy_sci) {
 
   zero_daily_count <- 1/365.25
   log_zero_daily_count <- log2(zero_daily_count)
@@ -185,18 +185,21 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
                       TRUE ~ log2(IfromM_daily)))
   }
 
-  my_subset$SCI_F_Dir <- as.numeric(residuals(lm(data = my_subset, log2ItoF_daily ~ log2OE)))
-  my_subset$SCI_F_Rec <- as.numeric(residuals(lm(data = my_subset, log2IfromF_daily ~ log2OE)))
+  if (legacy_sci) {
 
-  if (include_males) {
-    my_subset$SCI_M_Dir <- as.numeric(residuals(lm(data = my_subset, log2ItoM_daily ~ log2OE)))
-    my_subset$SCI_M_Rec <- as.numeric(residuals(lm(data = my_subset, log2IfromM_daily ~ log2OE)))
-  }
+    my_subset$SCI_F_Dir <- as.numeric(residuals(lm(data = my_subset, log2ItoF_daily ~ log2OE)))
+    my_subset$SCI_F_Rec <- as.numeric(residuals(lm(data = my_subset, log2IfromF_daily ~ log2OE)))
 
-  if (!directional) {
-    my_subset$SCI_F <- (my_subset$SCI_F_Dir + my_subset$SCI_F_Rec) / 2
     if (include_males) {
-      my_subset$SCI_M <- (my_subset$SCI_M_Dir + my_subset$SCI_M_Rec) / 2
+      my_subset$SCI_M_Dir <- as.numeric(residuals(lm(data = my_subset, log2ItoM_daily ~ log2OE)))
+      my_subset$SCI_M_Rec <- as.numeric(residuals(lm(data = my_subset, log2IfromM_daily ~ log2OE)))
+    }
+
+    if (!directional) {
+      my_subset$SCI_F <- (my_subset$SCI_F_Dir + my_subset$SCI_F_Rec) / 2
+      if (include_males) {
+        my_subset$SCI_M <- (my_subset$SCI_M_Dir + my_subset$SCI_M_Rec) / 2
+      }
     }
   }
 
@@ -221,7 +224,7 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
 #' @examples
 sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
                 min_res_days = 60, parallel = FALSE, ncores = NULL,
-                directional = FALSE) {
+                directional = FALSE, legacy_sci = FALSE) {
 
   ptm <- proc.time()
 
@@ -257,7 +260,7 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
                       .packages = c('tidyverse')) %dopar% {
                         get_sci_subset(my_iyol[i, ], members_l, focals_l,
                                        females_l, interactions_l, min_res_days,
-                                       directional)
+                                       directional, legacy_sci)
                       }
     close(pb)
     stopCluster(cl)
@@ -272,19 +275,51 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
       my_iyol[i, ]$subset <- list(get_sci_subset(my_iyol[i, ], members_l,
                                                  focals_l, females_l,
                                                  interactions_l, min_res_days,
-                                                 directional))
+                                                 directional, legacy_sci))
       setTxtProgressBar(pb, i)
       close(pb)
     }
   }
 
-  sci_focal <- my_iyol %>%
-    unnest() %>%
-    mutate(focal = (sname == sname1 & grp == grp1)) %>%
-    filter(focal) %>%
-    select(sname, grp, start, end, contains("SCI_"))
+  if (!legacy_sci) {
 
-  res <- left_join(my_iyol, sci_focal, by = c("sname", "grp", "start", "end"))
+    sci_males <- my_iyol %>%
+      tidyr::unnest() %>%
+      dplyr::filter(sex == "M") %>%
+      dplyr::mutate(SCI_F_Dir = lm(log2ItoF_daily ~ log2OE)$residuals,
+             SCI_F_Rec = lm(log2IfromF_daily ~ log2OE)$residuals,
+             SCI_F = (SCI_F_Dir + SCI_F_Rec) / 2) %>%
+      dplyr::group_by(sname, sex, grp, age_class, start, end) %>%
+      dplyr::mutate_at(dplyr::vars(dplyr::starts_with("SCI")), list(scale_num)) %>%
+      dplyr::ungroup()
+
+    sci_females <- my_iyol %>%
+      tidyr::unnest() %>%
+      dplyr::filter(sex == "F") %>%
+      dplyr::mutate(SCI_F_Dir = lm(log2ItoF_daily ~ log2OE)$residuals,
+                    SCI_F_Rec = lm(log2IfromF_daily ~ log2OE)$residuals,
+                    SCI_F = (SCI_F_Dir + SCI_F_Rec) / 2,
+                    SCI_M_Dir = lm(log2ItoM_daily ~ log2OE)$residuals,
+                    SCI_M_Rec = lm(log2IfromM_daily ~ log2OE)$residuals,
+                    SCI_M = (SCI_M_Dir + SCI_M_Rec) / 2) %>%
+      dplyr::group_by(sname, sex, grp, age_class, start, end) %>%
+      dplyr::mutate_at(dplyr::vars(dplyr::starts_with("SCI")), list(scale_num)) %>%
+      dplyr::ungroup()
+
+    temp_iyol <- dplyr::bind_rows(sci_females, sci_males) %>%
+      dplyr::group_by(sname, grp, start, end, days_present, sex, birth, first_start_date, statdate, birth_dates, midpoint, age_start_yrs, age_class) %>%
+      tidyr::nest(.key = "subset") %>%
+      dplyr::arrange(sname, grp, age_class)
+
+  }
+
+  sci_focal <- temp_iyol %>%
+    tidyr::unnest() %>%
+    dplyr::mutate(focal = (sname == sname1 & grp == grp1)) %>%
+    dplyr::filter(focal) %>%
+    dplyr::select(sname, grp, start, end, dplyr::contains("SCI_"))
+
+  res <- dplyr::left_join(temp_iyol, sci_focal, by = c("sname", "grp", "start", "end"))
 
   attr(res, "directional") <- directional
 
@@ -403,47 +438,47 @@ apply_universal_slope <- function(data) {
 
   # Apply universal slope correction
   keep <- data %>%
-    unnest() %>%
-    filter(log2_i_adj > -999)
+    tidyr::unnest() %>%
+    dplyr::filter(log2_i_adj > -999)
 
   dsi_universal_slopes <- keep %>%
-    group_by(sex, dyad_type) %>%
-    summarise(univ = list(lm(log2_i_adj ~ log2OE))) %>%
-    mutate(coefs = map(univ, broom::tidy)) %>%
-    select(-univ) %>%
-    unnest() %>%
-    select(sex, dyad_type, term, estimate) %>%
-    spread(term, estimate) %>%
-    rename("B0" = `(Intercept)`, "B1" = "log2OE")
+    dplyr::group_by(sex, dyad_type) %>%
+    dplyr::summarise(univ = list(lm(log2_i_adj ~ log2OE))) %>%
+    dplyr::mutate(coefs = map(univ, broom::tidy)) %>%
+    dplyr::select(-univ) %>%
+    tidyr::unnest() %>%
+    dplyr::select(sex, dyad_type, term, estimate) %>%
+    dplyr::spread(term, estimate) %>%
+    dplyr::rename("B0" = `(Intercept)`, "B1" = "log2OE")
 
   universal_dsi_slope_values <- function(my_df, focal_sname, focal_grp, focal_sex) {
 
     keep_out <- my_df %>%
-      filter(i_total == 0)
+      dplyr::filter(i_total == 0)
 
     sv <- dsi_universal_slopes %>%
-      filter(sex == focal_sex)
+      dplyr::filter(sex == focal_sex)
 
     res <- my_df %>%
-      inner_join(sv, by = "dyad_type")
+      dplyr::inner_join(sv, by = "dyad_type")
 
     res <- res %>%
-      filter(i_adj > 0) %>%
-      group_by(dyad_type) %>%
-      mutate(res_i_adj = log2_i_adj - (B0 + (B1 * log2OE))) %>%
-      ungroup()
+      dplyr::filter(i_adj > 0) %>%
+      dplyr::group_by(dyad_type) %>%
+      dplyr::mutate(res_i_adj = log2_i_adj - (B0 + (B1 * log2OE))) %>%
+      dplyr::ungroup()
 
     res <- res %>%
-      group_by(dyad_type) %>%
-      mutate(res_i_adj = scale_num(res_i_adj)) %>%
-      select(-B0, -B1, -sex) %>%
-      bind_rows(keep_out) %>%
-      arrange(sname, grp, dyad_type, partner)
+      dplyr::group_by(dyad_type) %>%
+      dplyr::mutate(res_i_adj = scale_num(res_i_adj)) %>%
+      dplyr::select(-B0, -B1, -sex) %>%
+      dplyr::bind_rows(keep_out) %>%
+      dplyr::arrange(sname, grp, dyad_type, partner)
 
   }
 
   data_univ <- data %>%
-    mutate(subset = pmap(.l = list(subset, sname, grp, sex), .f = universal_dsi_slope_values))
+    dplyr::mutate(subset = purrr::pmap(.l = list(subset, sname, grp, sex), .f = universal_dsi_slope_values))
 
   return(data_univ)
 }
@@ -482,8 +517,8 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
     overlap_dates <- dplyr::intersect(focal_dates, partner_dates)
 
     overlap_dates <- my_focals %>%
-      filter(date %in% overlap_dates & grp == focal_grp) %>%
-      pull(date)
+      dplyr::filter(date %in% overlap_dates & grp == focal_grp) %>%
+      dplyr::pull(date)
 
     return(overlap_dates)
   }
@@ -546,7 +581,7 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
       dplyr::rename(sname_sex = sex) %>%
       dplyr::inner_join(select(df, -sname, -sex), by = c("grp")) %>%
       dplyr::group_by(sname, grp, sname_sex) %>%
-      dplyr::summarise(days_present = n(),
+      dplyr::summarise(days_present = dplyr::n(),
                        start = min(date),
                        end = max(date))
   } else {
@@ -567,8 +602,8 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
                       (is_actor_adult & actee == my_sname) |
                       (is_actee_adult & actor == my_sname))
 
-    if (any(map_int(list(my_members, my_females, my_focals, my_interactions),
-                    nrow) == 0)) {
+    if (any(purrr::map_int(list(my_members, my_females, my_focals, my_interactions),
+                           nrow) == 0)) {
       return(dplyr::tbl_df(NULL))
     }
 
@@ -578,7 +613,7 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
     my_subset <- my_members %>%
       dplyr::rename(sname_sex = sex) %>%
       dplyr::group_by(sname, grp, sname_sex) %>%
-      dplyr::summarise(days_present = n(),
+      dplyr::summarise(days_present = dplyr::n(),
                        start = min(date),
                        end = max(date))
   }

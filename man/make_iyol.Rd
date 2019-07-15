@@ -2,7 +2,7 @@
 % Please edit documentation in R/biographical-data.R
 \name{make_iyol}
 \alias{make_iyol}
-\title{Create a data frame for each adult individual year of life}
+\title{Create a data frame for each individual year of life (by default, for adults only)}
 \usage{
 make_iyol(babase, members_l, focals_l = NULL, interactions_l = NULL,
   .by_grp = TRUE, .adults_only = TRUE)
@@ -24,5 +24,5 @@ make_iyol(babase, members_l, focals_l = NULL, interactions_l = NULL,
 A tibble with one row per animal (and optionally, per group) and year of life, with contextual data
 }
 \description{
-Create a data frame for each adult individual year of life
+Create a data frame for each individual year of life (by default, for adults only)
 }

@@ -4,8 +4,8 @@
 \alias{make_target_date_df}
 \title{Create a data frame with year-long intervals prior to specific target dates}
 \usage{
-make_target_date_df(target_df, babase, members_l, .by_grp = TRUE,
-  .adults_only = TRUE)
+make_target_date_df(target_df, babase, members_l, window_length = 1,
+  .by_grp = TRUE, .adults_only = TRUE)
 }
 \arguments{
 \item{target_df}{A data frame that includes the columns sname, sex, grp, and date}
@@ -13,6 +13,8 @@ make_target_date_df(target_df, babase, members_l, .by_grp = TRUE,
 \item{babase}{A DBI connection to the babase database}
 
 \item{members_l}{A subset of members table produced by the function 'subset_members'}
+
+\item{window_length}{Length in years of the time window for the social index}
 
 \item{.by_grp}{Logical indicating whether to separate by group. Default is TRUE}
 

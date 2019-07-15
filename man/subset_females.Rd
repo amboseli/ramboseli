@@ -2,7 +2,7 @@
 % Please edit documentation in R/biographical-data.R
 \name{subset_females}
 \alias{subset_females}
-\title{Obtain a subset of female count data that excludes behavioral observation gaps.}
+\title{Obtain a subset of adult female count data that excludes behavioral observation gaps.}
 \usage{
 subset_females(members_l)
 }
@@ -13,5 +13,5 @@ subset_females(members_l)
 A subset of female count data that excludes behavioral observation gaps.
 }
 \description{
-Obtain a subset of female count data that excludes behavioral observation gaps.
+Obtain a subset of adult female count data that excludes behavioral observation gaps.
 }

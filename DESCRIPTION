@@ -18,4 +18,4 @@ Imports:
     dbplyr (>= 1.1.0),
     purrrlyr (>= 0.0.2),
      zoo (>= 1.8-0)
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.1

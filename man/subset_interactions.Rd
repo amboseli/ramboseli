@@ -4,12 +4,15 @@
 \alias{subset_interactions}
 \title{Obtain a subset of grooming data that excludes behavioral observation gaps.}
 \usage{
-subset_interactions(babase, members_l, my_acts = NULL)
+subset_interactions(babase, members_l, my_acts = NULL,
+  .adults_only = TRUE)
 }
 \arguments{
 \item{babase}{A DBI connection to the babase database}
 
 \item{members_l}{A subset of members table produced by the function 'subset_members'}
+
+\item{.adults_only}{Logical indicating whether to include adults only. Default is TRUE}
 }
 \value{
 A subset of grooming data that excludes behavioral observation gaps.

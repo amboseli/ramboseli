@@ -4,10 +4,12 @@
 \alias{subset_members}
 \title{Obtain a subset of members table that excludes behavioral observation gaps.}
 \usage{
-subset_members(babase)
+subset_members(babase, .adults_only = TRUE)
 }
 \arguments{
 \item{babase}{A DBI connection to the babase database}
+
+\item{.adults_only}{Logical indicating whether to include adults only. Default is TRUE}
 }
 \value{
 A subset of the members table that excludes behavioral observation gaps.

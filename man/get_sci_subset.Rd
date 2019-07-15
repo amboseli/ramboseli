@@ -4,8 +4,8 @@
 \alias{get_sci_subset}
 \title{Obtain SCI subsets for the animal's year of life}
 \usage{
-get_sci_subset(df, members_l, focals_l, females_l, interactions_l, min_res_days,
-  directional)
+get_sci_subset(df, members_l, focals_l, females_l, interactions_l,
+  min_res_days, directional, legacy_sci)
 }
 \arguments{
 \item{df}{One row individual-year-of-life data}

@@ -6,7 +6,7 @@
 \usage{
 sci(my_iyol, members_l, focals_l, females_l, interactions_l,
   min_res_days = 60, parallel = FALSE, ncores = NULL,
-  directional = FALSE)
+  directional = FALSE, legacy_sci = FALSE)
 }
 \arguments{
 \item{my_iyol}{Individual-year-of-life data.}
