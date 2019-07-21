@@ -438,7 +438,7 @@ apply_universal_slope <- function(data) {
 
   # Apply universal slope correction
   keep <- data %>%
-    tidyr::unnest() %>%
+    tidyr::unnest(subset) %>%
     dplyr::filter(log2_i_adj > -999)
 
   dsi_universal_slopes <- keep %>%
