@@ -453,6 +453,10 @@ apply_universal_slope <- function(data) {
 
   universal_dsi_slope_values <- function(my_df, focal_sname, focal_grp, focal_sex) {
 
+    if (nrow(my_df) == 0) {
+      return(dplyr::tbl_df(NULL))
+    }
+
     keep_out <- my_df %>%
       dplyr::filter(i_total == 0)
 
