@@ -448,7 +448,7 @@ apply_universal_slope <- function(data) {
     dplyr::select(-univ) %>%
     tidyr::unnest() %>%
     dplyr::select(sex, dyad_type, term, estimate) %>%
-    dplyr::spread(term, estimate) %>%
+    tidyr::spread(term, estimate) %>%
     dplyr::rename("B0" = `(Intercept)`, "B1" = "log2OE")
 
   universal_dsi_slope_values <- function(my_df, focal_sname, focal_grp, focal_sex) {
