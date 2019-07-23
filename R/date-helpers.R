@@ -59,5 +59,8 @@ scale_num <- function(x) {
   if (length(x) == 1 & !all(is.na(x))) {
     return(0)
   }
+  if (length(x) > 1 & sd(x) == 0) {
+    return(rep(0, length(x)))
+  }
   return(as.numeric(scale(x)))
 }
