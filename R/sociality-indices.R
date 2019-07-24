@@ -237,6 +237,10 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
     stop("Problem with input data. Use the 'make_iyol' or 'make_target_df' function to create the input.")
   }
 
+  if (missing(min_res_days)) {
+    message("Using default value of 60 as minimum days of residence for an individual to be included. Adjust this if desired!")
+  }
+
   if (parallel) {
     avail_cores <- detectCores()
     if (!is.null(ncores)) {
@@ -350,7 +354,7 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
 #'
 #' @examples
 dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, interactions_l,
-                         min_cores_days = 60, within_grp = FALSE, parallel = FALSE,
+                         min_cores_days = 1, within_grp = FALSE, parallel = FALSE,
                          ncores = NULL, directional = FALSE) {
 
   ptm <- proc.time()
@@ -362,6 +366,10 @@ dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, in
                                  "midpoint", "age_start_yrs", "age_class", "obs_date")) |
       min_cores_days < 0) {
     stop("Problem with input data. Use the 'make_iyol' or 'make_target_df' function to create the input.")
+  }
+
+  if (missing(min_cores_days)) {
+    message("Using default value of 1 as minimum days of coresidence for a dyad to be included. Adjust this if desired!")
   }
 
   if (parallel) {
