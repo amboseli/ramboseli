@@ -56,11 +56,10 @@ make_date_cols <- function(df, date_col) {
 #'
 #' @examples
 scale_num <- function(x) {
-  if (length(x) == 1 & !all(is.na(x))) {
-    return(0)
+  res <- x - mean(x, na.rm = TRUE)
+  msd <- sd(x, na.rm = TRUE)
+  if (!is.na(msd) & msd != 0)  {
+    res <- res / msd
   }
-  if (length(x) > 1 & sd(x) == 0) {
-    return(rep(0, length(x)))
-  }
-  return(as.numeric(scale(x)))
+  return(res)
 }
