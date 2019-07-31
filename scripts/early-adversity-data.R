@@ -652,10 +652,19 @@ gc <- gc %>%
 
 gcd <- make_target_date_df(select(gc, -birth), babase, members_l2, .adults_only = FALSE)
 
-# WARNING: this one takes several days to finish!
+
+
+######### WARNING WARNING WARNING WARNING WARNING WARNING
+#
+# This one takes several days to finish
+# And may require > 16 GB of memory!
 gc_dsi <- dyadic_index(gcd, biograph_l, members_l2, focals_l, females_l,
                         grooming_l2, min_cores_days = 1, within_grp = FALSE,
                         parallel = TRUE, directional = FALSE)
+#
+######### WARNING WARNING WARNING WARNING WARNING WARNING
+
+
 
 gc_dsi_summary <- dyadic_index_summary(gc_dsi)
 
@@ -667,10 +676,10 @@ gc_dsi_wt_avg <- gc_dsi_summary %>%
   mutate_at(vars(starts_with("DSI")), funs(wt = . * days_present)) %>%
   group_by(sname, obs_date) %>%
   summarise_at(vars(contains("_wt")),
-               funs(sum(., na.rm = TRUE) /
+               list(~ sum(., na.rm = TRUE) /
                       sum(days_present * ifelse(is.na(.), NA, 1), na.rm = TRUE))) %>%
   ungroup() %>%
-  mutate_at(vars(contains("_wt")), funs(replace_na(., NA))) %>%
+  mutate_at(vars(contains("_wt")), list(~ replace_na(., NA))) %>%
   rename(date = obs_date, DSI_F = DSI_F_wt, DSI_M = DSI_M_wt)
 
 gc <- gc %>%
@@ -702,10 +711,10 @@ gc_sci_wt_avg <- gc_sci_summary %>%
   mutate_at(vars(starts_with("SCI")), funs(wt = . * days_present)) %>%
   group_by(sname, obs_date) %>%
   summarise_at(vars(contains("_wt")),
-               funs(sum(., na.rm = TRUE) /
+               list(~ sum(., na.rm = TRUE) /
                       sum(days_present * ifelse(is.na(.), NA, 1), na.rm = TRUE))) %>%
   ungroup() %>%
-  mutate_at(vars(contains("_wt")), funs(replace_na(., NA))) %>%
+  mutate_at(vars(contains("_wt")), list(~ replace_na(., NA))) %>%
   rename(date = obs_date, SCI_F = SCI_F_wt, SCI_M = SCI_M_wt)
 
 gc <- gc %>%
