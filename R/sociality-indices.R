@@ -310,8 +310,10 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
       dplyr::mutate_at(dplyr::vars(dplyr::starts_with("SCI")), list(scale_num)) %>%
       dplyr::ungroup()
 
+    my_grouping_vars <- names(my_iyol %>% select(-subset))
+
     temp_iyol <- dplyr::bind_rows(sci_females, sci_males) %>%
-      dplyr::group_by(sname, grp, start, end, days_present, sex, birth, first_start_date, statdate, birth_dates, midpoint, age_start_yrs, age_class) %>%
+      dplyr::group_by_at(vars(my_grouping_vars)) %>%
       tidyr::nest(.key = "subset") %>%
       dplyr::arrange(sname, grp, age_class)
 
