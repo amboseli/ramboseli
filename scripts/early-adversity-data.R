@@ -392,7 +392,7 @@ amb_temp <- tmax_aug %>%
   complete(date = full_seq(date, 1))
 
 # Calculate mean tempmax over 30-day sliding window that is right-aligned to sample collection date
-amb_temp$mean_tmax_30d <- RcppRoll::roll_meanr(amb_temp$tempmax_cor, n = 30, na.rm = TRUE)
+amb_temp$mean_tmax_30d <- RcppRoll::roll_meanr(amb_temp$tempmax_obs, n = 30, na.rm = TRUE)
 
 # Join to GC data
 gc <- gc %>%
