@@ -312,10 +312,34 @@ gc <- gc %>%
 # gc-cov-repstat ----------------------------------------------------------
 
 ## Reproductive state on the day the sample was collected (pregnant, lactating, cycling).
-# Note: in other analyses, I considered the week after birth as Pregnant rather than Lactating because GC values remain high
+# As in other analyses, I considered the week after birth as Pregnant rather than Lactating because GC values remain high
 
 repstats <- collect(tbl(babase, "repstats_grp"))
 repstats$state <- factor(repstats$state, labels = c("Cycling", "Lactating", "Pregnant"))
+
+# Consider week after birth as Pregnant rather than Lactating
+# because GC values remain high
+temp <- repstats %>%
+  mutate(old_state = state,
+         flag_rep = (state == "Lactating" & dins <= 7),
+         state = as.character(state),
+         state = if_else(flag_rep, "Pregnant", state),
+         state = factor(state, levels = c("Cycling", "Lactating", "Pregnant")))
+
+# Find unique repstat blocks and assign an ID
+temp <- temp %>%
+  arrange(sname, date) %>%
+  group_by(sname) %>%
+  mutate(tdiff = as.numeric(date - lag(date)),
+         bid = if_else(is.na(tdiff) | state != lag(state) |
+                         (!is.na(tdiff) & tdiff > 1 &
+                            (pid != lag(pid) | is.na(pid) | is.na(lag(pid)))),
+                       rid, 0L))
+
+temp <- temp %>%
+  mutate(bid = if_else(bid == 0, NA_integer_, bid))
+
+repstats <- tidyr::fill(temp, bid, .direction = "down")
 
 gc <- gc %>%
   left_join(select(repstats, sname, state, date, grp), by = c("sname", "grp", "date"))
