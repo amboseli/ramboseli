@@ -288,7 +288,7 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
   if (!legacy_sci) {
 
     sci_males <- my_iyol %>%
-      tidyr::unnest() %>%
+      tidyr::unnest_legacy() %>%
       dplyr::filter(sex == "M") %>%
       dplyr::mutate(SCI_F_Dir = lm(log2ItoF_daily ~ log2OE)$residuals,
              SCI_F_Rec = lm(log2IfromF_daily ~ log2OE)$residuals,
@@ -298,7 +298,7 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
       dplyr::ungroup()
 
     sci_females <- my_iyol %>%
-      tidyr::unnest() %>%
+      tidyr::unnest_legacy() %>%
       dplyr::filter(sex == "F") %>%
       dplyr::mutate(SCI_F_Dir = lm(log2ItoF_daily ~ log2OE)$residuals,
                     SCI_F_Rec = lm(log2IfromF_daily ~ log2OE)$residuals,
@@ -314,13 +314,13 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
 
     temp_iyol <- dplyr::bind_rows(sci_females, sci_males) %>%
       dplyr::group_by_at(vars(my_grouping_vars)) %>%
-      tidyr::nest(.key = "subset") %>%
+      tidyr::nest_legacy(.key = "subset") %>%
       dplyr::arrange(sname, grp, age_class)
 
   }
 
   sci_focal <- temp_iyol %>%
-    tidyr::unnest() %>%
+    tidyr::unnest_legacy() %>%
     dplyr::mutate(focal = (sname == sname1 & grp == grp1)) %>%
     dplyr::filter(focal) %>%
     dplyr::select(sname, grp, start, end, dplyr::contains("SCI_"))
@@ -448,7 +448,7 @@ apply_universal_slope <- function(data) {
 
   # Apply universal slope correction
   keep <- data %>%
-    tidyr::unnest(subset) %>%
+    tidyr::unnest_legacy(subset) %>%
     dplyr::filter(log2_i_adj > -999)
 
   dsi_universal_slopes <- keep %>%
@@ -456,7 +456,7 @@ apply_universal_slope <- function(data) {
     dplyr::summarise(univ = list(lm(log2_i_adj ~ log2OE))) %>%
     dplyr::mutate(coefs = map(univ, broom::tidy)) %>%
     dplyr::select(-univ) %>%
-    tidyr::unnest() %>%
+    tidyr::unnest_legacy() %>%
     dplyr::select(sex, dyad_type, term, estimate) %>%
     tidyr::spread(term, estimate) %>%
     dplyr::rename("B0" = `(Intercept)`, "B1" = "log2OE")
@@ -633,10 +633,10 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
   }
 
   # For each of these records, find all possible dyad partners
-  # Store as new list column and unnest to expand
+  # Store as new list column and unnest_legacy to expand
   dyads <- my_subset %>%
     dplyr::mutate(partner = list(my_subset$sname[my_subset$sname != sname])) %>%
-    tidyr::unnest()
+    tidyr::unnest_legacy()
 
   # Get sex and grp of partner
   # Remove dyads not in same groups
@@ -731,12 +731,12 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
                     dyad_type = paste(sort(c(sname_sex, partner_sex)), collapse = '-')) %>%
       dplyr::ungroup() %>%
       dplyr::group_by(dyad_type) %>%
-      tidyr::nest()
+      tidyr::nest_legacy()
 
     # Fit regression separately for the two dyad types and get residuals
     my_subset <- my_subset %>%
       dplyr::mutate(data = purrr::map(data, fit_dyadic_regression)) %>%
-      tidyr::unnest()
+      tidyr::unnest_legacy()
 
     # Reorganize columns
     my_subset <- my_subset %>%
@@ -775,12 +775,12 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
                     dyad_type = paste(anim1_sex, anim2_sex, sep = '-')) %>%
       dplyr::ungroup() %>%
       dplyr::group_by(dyad_type) %>%
-      tidyr::nest()
+      tidyr::nest_legacy()
 
     # Fit regression separately for the different dyad types and get residuals
     my_subset <- my_subset %>%
       dplyr::mutate(data = purrr::map(data, fit_dyadic_regression)) %>%
-      tidyr::unnest()
+      tidyr::unnest_legacy()
 
     # Reorganize columns
     my_subset <- my_subset %>%
@@ -903,16 +903,16 @@ dyadic_index_summary <- function(df) {
 
   df <- df %>%
     dplyr::select(-subset, -di) %>%
-    tidyr::unnest()
+    tidyr::unnest_legacy()
 
   di_strength <- df %>%
     dplyr::select(-top_partners, -r_quantity, -r_reciprocity) %>%
-    tidyr::unnest() %>%
+    tidyr::unnest_legacy() %>%
     dplyr::select(-n)
 
   di_recip <- df %>%
     dplyr::select(-top_partners, -r_quantity, -r_strength) %>%
-    tidyr::unnest() %>%
+    tidyr::unnest_legacy() %>%
     dplyr::select(-n)
 
   if (directional) {
@@ -930,7 +930,7 @@ dyadic_index_summary <- function(df) {
 
     di_quantity <- df %>%
       dplyr::select(-top_partners, -r_strength, -r_reciprocity) %>%
-      tidyr::unnest() %>%
+      tidyr::unnest_legacy() %>%
       dplyr::mutate(DSI_type = case_when(
         sex == "M" & dyad_type %in% c("F-M", "M-F") ~ "F",
         sex == "M" & dyad_type == "M-M" ~ "M",
@@ -969,7 +969,7 @@ dyadic_index_summary <- function(df) {
 
     di_quantity <- df %>%
       dplyr::select(-top_partners, -r_strength, -r_reciprocity) %>%
-      tidyr::unnest() %>%
+      tidyr::unnest_legacy() %>%
       dplyr::mutate(DSI_type = case_when(
         sex == "M" & dyad_type == "M-M" ~ "M",
         sex == "M" & dyad_type == "F-M" ~ "F",
