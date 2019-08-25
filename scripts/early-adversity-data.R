@@ -117,7 +117,7 @@ amb_rain <- amb_rain %>%
 
 rain_1_yr <- subjects %>%
   select(sname, start_rain = birth) %>%
-  mutate(end_rain = start_rain + years((1)) - days(1))
+  mutate(end_rain = start_rain + years(1) - days(1))
 
 rain_1_yr$data <- list(amb_rain)
 
@@ -312,7 +312,6 @@ gc <- gc %>%
 # gc-cov-repstat ----------------------------------------------------------
 
 ## Reproductive state on the day the sample was collected (pregnant, lactating, cycling).
-# As in other analyses, I considered the week after birth as Pregnant rather than Lactating because GC values remain high
 
 repstats <- collect(tbl(babase, "repstats_grp"))
 repstats$state <- factor(repstats$state, labels = c("Cycling", "Lactating", "Pregnant"))
@@ -641,6 +640,129 @@ gc <- gc %>%
   left_join(maternal_kin, by = c("sid", "sname", "grp", "date"))
 
 
+# gc-percent-cycling ------------------------------------------------------
+
+## Percent of time cycling in previous year
+
+repstats <- collect(tbl(babase, "repstats_grp"))
+repstats$state <- factor(repstats$state, labels = c("Cycling", "Lactating", "Pregnant"))
+
+# repstat on gc collection date
+gc_repstats <- repstats %>%
+  semi_join(gc, by = c("sname", "grp", "date"))
+
+# Create 1-yr intervals
+gc_repstats <- gc_repstats %>%
+  mutate(start = date - years(1) + days(1))
+
+temp <- gc_repstats %>%
+  select(sname, start, end = date, c_state = state) %>%
+  inner_join(select(repstats, sname, date, state), by = "sname") %>%
+  filter(date >= start & date <= end)
+
+pct_cycling <- temp %>%
+  group_by(sname, start, end, state, .drop = FALSE) %>%
+  tally(name = "n_days") %>%
+  ungroup() %>%
+  group_by(sname, start, end) %>%
+  mutate(percent_days = n_days / sum(n_days)) %>%
+  filter(state == "Cycling") %>%
+  ungroup() %>%
+  rename(n_days_cycling = n_days, percent_days_cycling = percent_days)
+
+gc <- gc %>%
+  left_join(select(pct_cycling, sname, percent_days_cycling, date = end),
+            by = c("sname", "date"))
+
+
+# gc-percent-infant-3mo ---------------------------------------------------
+
+gc_mom_snames <- gc %>%
+  filter(sex == "F") %>%
+  pull(sname) %>%
+  unique()
+
+kids <- biograph_l %>%
+  drop_na(sname) %>%
+  select(kid_sname = sname, kid_pid = pid, kid_birth = birth) %>%
+  mutate(mom_sname = str_sub(kid_pid, 1, 3)) %>%
+  filter(mom_sname %in% gc_mom_snames)
+
+kid_snames <- unique(kids$kid_sname)
+
+kid_members <- biograph_l %>%
+  filter(sname %in% kid_snames) %>%
+  inner_join(members_l2) %>%
+  select(kid_sname = sname, kid_birth = birth, date)
+
+kid_members <- kid_members %>%
+  filter(date <= kid_birth + months(3)) %>%
+  left_join(select(kids, kid_sname, mom_sname))
+
+gc_moms <- gc %>%
+  select(sname, sex, date) %>%
+  filter(sex == "F") %>%
+  mutate(start = date - years(1) + days(1),) %>%
+  rename(end = date) %>%
+  distinct()
+
+gc_moms_days_present <- gc_moms %>%
+  inner_join(select(members_l2, sname, sex, date)) %>%
+  filter(date >= start & date <= end) %>%
+  group_by(sname, sex, start, end) %>%
+  tally(name = "days_present")
+
+gc_mom_infant_days <- gc_moms %>%
+  left_join(select(kid_members, kid_sname, sname = mom_sname, date)) %>%
+  filter(date >= start & date <= end) %>%
+  group_by(sname, start, end, kid_sname) %>%
+  tally(name = "days_with_infant")
+
+# There are some cases where the female had multiple infants in same year
+# Combine these by taking sum of days
+gc_mom_infant_days <- gc_mom_infant_days %>%
+  group_by(sname, start, end) %>%
+  summarise(days_with_infant = sum(days_with_infant))
+
+# Merge these to calculate percent days
+pct_infant <- gc_moms_days_present %>%
+  left_join(gc_mom_infant_days) %>%
+  replace_na(list(days_with_infant = 0)) %>%
+  mutate(percent_days_with_infant = days_with_infant / days_present) %>%
+  ungroup()
+
+gc <- gc %>%
+  left_join(select(pct_infant, sname, percent_days_with_infant, date = end),
+            by = c("sname", "date"))
+
+
+# gc-cov-proprank ---------------------------------------------------------
+
+# The subject's proportional dominance rank in the month the sample was collected.
+
+ranks <- tbl(babase, "ranks")
+
+ranks_l <- ranks %>%
+  filter(rnktype %in% c("ADF", "ADM")) %>%
+  collect() %>%
+  group_by(grp, rnkdate, rnktype) %>%
+  mutate(proprank = 1 - (rank - 1) / (n() - 1)) %>%
+  make_date_cols(rnkdate) %>%
+  ungroup()
+
+# Proprank is NaN if there's only one individual of that age/sex class in the group
+ranks_l <- replace_na(ranks_l, list(proprank = 1))
+
+gc_rank <- gc %>%
+  select(sname, grp, date) %>%
+  make_date_cols(date) %>%
+  left_join(ranks_l, by = c("year_of", "month_of", "sname", "grp")) %>%
+  distinct()
+
+gc <- gc %>%
+  left_join(select(gc_rank, sname, grp, date, proprank), by = c("sname", "grp", "date"))
+
+
 # gc-cov-dsi --------------------------------------------------------------
 
 # The mediators should be:
@@ -690,6 +812,9 @@ saveRDS(gc_dsi, paste0("data/gc_dsi_", Sys.Date(), ".RDS"))
 saveRDS(gc_dsi_summary, paste0("data/gc_dsi_summary_", Sys.Date(), ".RDS"))
 
 
+
+
+
 # gc-cov-sci --------------------------------------------------------------
 
 # The subject's SCI-F in the year prior to sample collection. For subjects who are age 4, this mean that some of the grooming
@@ -721,34 +846,6 @@ gc <- gc %>%
   left_join(gc_sci_wt_avg, by = c("sname", "date"))
 
 saveRDS(gc_sci, paste0("data/gc_sci_", Sys.Date(), ".RDS"))
-
-
-# gc-cov-proprank ---------------------------------------------------------
-
-# The subject's proportional dominance rank in the month the sample was collected.
-
-ranks <- tbl(babase, "ranks")
-
-ranks_l <- ranks %>%
-  filter(rnktype %in% c("ADF", "ADM")) %>%
-  collect() %>%
-  group_by(grp, rnkdate, rnktype) %>%
-  mutate(proprank = 1 - (rank - 1) / (n() - 1)) %>%
-  make_date_cols(rnkdate) %>%
-  ungroup()
-
-# Proprank is NaN if there's only one individual of that age/sex class in the group
-ranks_l <- replace_na(ranks_l, list(proprank = 1))
-
-gc_rank <- gc %>%
-  select(sname, grp, date) %>%
-  make_date_cols(date) %>%
-  left_join(ranks_l, by = c("year_of", "month_of", "sname", "grp")) %>%
-  distinct()
-
-gc <- gc %>%
-  left_join(select(gc_rank, sname, grp, date, proprank), by = c("sname", "grp", "date"))
-
 
 
 # ---- WRITE-GC-COVARIATES-FILE -------------------------------------------
