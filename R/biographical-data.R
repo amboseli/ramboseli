@@ -477,9 +477,6 @@ make_iyol <- function(babase, members_l, focals_l = NULL, interactions_l = NULL,
   maturedates <- dplyr::tbl(babase, "maturedates")
   rankdates <- dplyr::tbl(babase, "rankdates")
 
-  # Local
-  biograph_l <- dplyr::collect(biograph)
-
   md_females <- maturedates %>%
     dplyr::semi_join(dplyr::filter(biograph, sex == "F"), by = "sname")
 
