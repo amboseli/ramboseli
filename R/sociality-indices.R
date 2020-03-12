@@ -484,7 +484,7 @@ apply_universal_slope <- function(data) {
 
     res <- res %>%
       dplyr::group_by(dyad_type) %>%
-      dplyr::mutate(res_i_adj = scale_num(res_i_adj)) %>%
+      dplyr::mutate(res_i_adj_s = scale_num(res_i_adj)) %>%
       dplyr::select(-B0, -B1, -sex) %>%
       dplyr::bind_rows(keep_out) %>%
       dplyr::arrange(sname, grp, dyad_type, partner)
@@ -903,7 +903,8 @@ dyadic_index_summary <- function(df) {
 
   df <- df %>%
     dplyr::select(-subset, -di) %>%
-    tidyr::unnest_legacy()
+    tidyr::unnest_legacy() %>%
+    ungroup()
 
   di_strength <- df %>%
     dplyr::select(-top_partners, -r_quantity, -r_reciprocity) %>%
