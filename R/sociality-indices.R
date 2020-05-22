@@ -487,7 +487,8 @@ apply_universal_slope <- function(data) {
       dplyr::mutate(res_i_adj_s = scale_num(res_i_adj)) %>%
       dplyr::select(-B0, -B1, -sex) %>%
       dplyr::bind_rows(keep_out) %>%
-      dplyr::arrange(sname, grp, dyad_type, partner)
+      dplyr::arrange(sname, grp, dyad_type, partner) %>%
+      dplyr::ungroup()
 
   }
 
@@ -867,7 +868,8 @@ get_focal_index <- function(my_sname, my_grp, my_subset) {
       res_i_adj >= perc_90 ~ "VeryStronglyBonded",
       res_i_adj >= perc_50 ~ "StronglyBonded",
       res_i_adj >= -9999999 ~ "WeaklyBonded",
-      TRUE ~ "NotBonded"))
+      TRUE ~ "NotBonded")) %>%
+    ungroup()
 
   return(focal_di)
 }
