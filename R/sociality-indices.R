@@ -288,7 +288,7 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
   if (!legacy_sci) {
 
     sci_males <- my_iyol %>%
-      tidyr::unnest_legacy() %>%
+      tidyr::unnest(cols = c(subset), names_repair = tidyr_legacy) %>%
       dplyr::filter(sex == "M") %>%
       dplyr::mutate(SCI_F_Dir = lm(log2ItoF_daily ~ log2OE)$residuals,
              SCI_F_Rec = lm(log2IfromF_daily ~ log2OE)$residuals,
@@ -298,7 +298,7 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
       dplyr::ungroup()
 
     sci_females <- my_iyol %>%
-      tidyr::unnest_legacy() %>%
+      tidyr::unnest(cols = c(subset), names_repair = tidyr_legacy) %>%
       dplyr::filter(sex == "F") %>%
       dplyr::mutate(SCI_F_Dir = lm(log2ItoF_daily ~ log2OE)$residuals,
                     SCI_F_Rec = lm(log2IfromF_daily ~ log2OE)$residuals,
@@ -313,14 +313,14 @@ sci <- function(my_iyol, members_l, focals_l, females_l, interactions_l,
     my_grouping_vars <- names(my_iyol %>% select(-subset))
 
     temp_iyol <- dplyr::bind_rows(sci_females, sci_males) %>%
-      dplyr::group_by_at(vars(my_grouping_vars)) %>%
+      dplyr::group_by_at(all_of(my_grouping_vars)) %>%
       tidyr::nest_legacy(.key = "subset") %>%
       dplyr::arrange(sname, grp, age_class)
 
   }
 
   sci_focal <- temp_iyol %>%
-    tidyr::unnest_legacy() %>%
+    tidyr::unnest(cols = c(subset), names_repair = tidyr_legacy) %>%
     dplyr::mutate(focal = (sname == sname1 & grp == grp1)) %>%
     dplyr::filter(focal) %>%
     dplyr::select(sname, grp, start, end, dplyr::contains("SCI_"))
