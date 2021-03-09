@@ -420,7 +420,7 @@ dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, in
   }
 
   # Apply universal slope correction
-  # This replaces all the res_i_adj values in each subset
+  # This replaces all the res_i_adj values in each subset and adds z-scored values in new column
   my_iyol <- apply_universal_slope(my_iyol)
 
   # Create focal summaries
@@ -441,7 +441,7 @@ dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, in
 #'
 #' @param data A full DSI data set including the subset list-column
 #'
-#' @return The full DSI data set with the res_i_adj values replaced by their universal-slope equivalents.
+#' @return The full DSI data set with the res_i_adj values replaced by their universal-slope equivalents and a new column, res_i_adj_s, with z-scored values.
 #'
 #' @examples
 apply_universal_slope <- function(data) {
@@ -469,6 +469,8 @@ apply_universal_slope <- function(data) {
 
     keep_out <- my_df %>%
       dplyr::filter(i_total == 0)
+
+    keep_out$res_i_adj_s <- -Inf
 
     sv <- dsi_universal_slopes %>%
       dplyr::filter(sex == focal_sex)
@@ -853,8 +855,8 @@ get_focal_index <- function(my_sname, my_grp, my_subset) {
   percs <- my_subset %>%
     dplyr::group_by(dyad_type) %>%
     dplyr::filter(i_adj > 0) %>%
-    dplyr::summarise(perc_50 = quantile(res_i_adj, probs = 0.5),
-                     perc_90 = quantile(res_i_adj, probs = 0.9))
+    dplyr::summarise(perc_50 = quantile(res_i_adj_s, probs = 0.5),
+                     perc_90 = quantile(res_i_adj_s, probs = 0.9))
 
   # Add percentile columns to my_subset
   my_subset <- dplyr::left_join(my_subset, percs, by = "dyad_type")
@@ -865,9 +867,9 @@ get_focal_index <- function(my_sname, my_grp, my_subset) {
   focal_di <- my_subset %>%
     dplyr::filter(grp == my_grp & (sname == my_sname | partner == my_sname)) %>%
     dplyr::mutate(bond_strength = dplyr::case_when(
-      res_i_adj >= perc_90 ~ "VeryStronglyBonded",
-      res_i_adj >= perc_50 ~ "StronglyBonded",
-      res_i_adj >= -9999999 ~ "WeaklyBonded",
+      res_i_adj_s >= perc_90 ~ "VeryStronglyBonded",
+      res_i_adj_s >= perc_50 ~ "StronglyBonded",
+      res_i_adj_s >= -9999999 ~ "WeaklyBonded",
       TRUE ~ "NotBonded")) %>%
     ungroup()
 
@@ -1042,16 +1044,16 @@ dyadic_row_summary <- function(df, focal, directional) {
     # Top partners are the top three interaction partners
     # This is calculated separately for each dyad type
     top_partners <- df %>%
-      dplyr::filter(res_i_adj > -9999) %>%
-      dplyr::arrange(dyad_type, direction, desc(res_i_adj)) %>%
+      dplyr::filter(res_i_adj_s > -9999) %>%
+      dplyr::arrange(dyad_type, direction, desc(res_i_adj_s)) %>%
       dplyr::group_by(dyad_type, direction) %>%
       dplyr::slice(1:3)
 
     # Relationship strength is the mean of the index value for the top three partners
     r_strength <- top_partners %>%
-      dplyr::filter(res_i_adj > -9999) %>%
+      dplyr::filter(res_i_adj_s > -9999) %>%
       dplyr::group_by(dyad_type, direction) %>%
-      dplyr::summarise(r_strength = mean(res_i_adj, na.rm = TRUE),
+      dplyr::summarise(r_strength = mean(res_i_adj_s, na.rm = TRUE),
                        n = n())
 
     r_reciprocity <- top_partners %>%
@@ -1069,16 +1071,16 @@ dyadic_row_summary <- function(df, focal, directional) {
     # Top partners are the top three interaction partners
     # This is calculated separately for each dyad type
     top_partners <- df %>%
-      dplyr::filter(res_i_adj > -9999) %>%
-      dplyr::arrange(dyad_type, desc(res_i_adj)) %>%
+      dplyr::filter(res_i_adj_s > -9999) %>%
+      dplyr::arrange(dyad_type, desc(res_i_adj_s)) %>%
       dplyr::group_by(dyad_type) %>%
       dplyr::slice(1:3)
 
     # Relationship strength is the mean of the index value for the top three partners
     r_strength <- top_partners %>%
-      dplyr::filter(res_i_adj > -9999) %>%
+      dplyr::filter(res_i_adj_s > -9999) %>%
       dplyr::group_by(dyad_type) %>%
-      dplyr::summarise(r_strength = mean(res_i_adj, na.rm = TRUE),
+      dplyr::summarise(r_strength = mean(res_i_adj_s, na.rm = TRUE),
                        n = n())
 
     r_reciprocity <- top_partners %>%
