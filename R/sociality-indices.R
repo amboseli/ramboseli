@@ -654,6 +654,7 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
   # If DSI is symmetric, these can be removed
   # That's true here, so remove duplicate dyads
   my_subset <- dyads %>%
+    ungroup() %>%
     dplyr::rowwise() %>%
     dplyr::mutate(tmp = paste(grp, sort(c(sname, partner)), collapse = '')) %>%
     dplyr::distinct(tmp, .keep_all = TRUE) %>%
