@@ -69,7 +69,8 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
     dplyr::group_by(sname, grp) %>%
     dplyr::summarise(days_present = n(),
                      start = min(date),
-                     end = max(date))
+                     end = max(date),
+                     .groups = "drop")
 
   # Allow focal animal only to be a non-adult (for early adversity analysis)
   my_interactions <- interactions_l %>%
@@ -85,19 +86,22 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
   # Focal animal was present and at least one focal sample was collected
   obs_days <- my_focals %>%
     group_by(grp, sname) %>%
-    summarise(days_observed = n())
+    summarise(days_observed = n(),
+              .groups = "drop")
 
   my_subset <- my_subset %>%
     left_join(obs_days, by = c("sname", "grp"))
 
   my_focals <- my_focals %>%
     dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(n_focals = sum(sum))
+    dplyr::summarise(n_focals = sum(sum),
+                     .groups = "drop")
 
   ## Female counts
   my_females <- get_mem_dates(my_subset, my_members, females_l, sel = quo(nr_females)) %>%
     dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(mean_f_count = mean(nr_females))
+    dplyr::summarise(mean_f_count = mean(nr_females),
+                     .groups = "drop")
 
   # Join back to my_subset to add n_focals column
   my_subset <- my_subset %>%
@@ -119,13 +123,15 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
   gg_f <- get_interaction_dates(my_subset, my_members, my_interactions,
                                 quo(actee_sex), "actor", "F") %>%
     dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(ItoF = n())
+    dplyr::summarise(ItoF = n(),
+                     .groups = "drop")
 
   ## Interactions received from females by each actee of focal's sex
   gr_f <- get_interaction_dates(my_subset, my_members, my_interactions,
                                 quo(actor_sex), "actee", "F") %>%
     dplyr::group_by(grp, sname) %>%
-    dplyr::summarise(IfromF = n())
+    dplyr::summarise(IfromF = n(),
+                     .groups = "drop")
 
   # Calculate variables for interactions with males only if:
   # - the interactions are grooming AND the focal animal is female OR
@@ -137,13 +143,15 @@ get_sci_subset <- function(df, members_l, focals_l, females_l, interactions_l,
     gg_m <- get_interaction_dates(my_subset, my_members, my_interactions,
                                   quo(actee_sex), "actor", "M") %>%
       dplyr::group_by(grp, sname) %>%
-      dplyr::summarise(ItoM = n())
+      dplyr::summarise(ItoM = n(),
+                       .groups = "drop")
 
     ## Interactions received from males by each actee of focal's sex
     gr_m <- get_interaction_dates(my_subset, my_members, my_interactions,
                                   quo(actor_sex), "actee", "M") %>%
       dplyr::group_by(grp, sname) %>%
-      dplyr::summarise(IfromM = n())
+      dplyr::summarise(IfromM = n(),
+                       .groups = "drop")
   }
 
   my_subset <- my_subset %>%
@@ -419,6 +427,8 @@ dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, in
     close(pb)
   }
 
+  saveRDS(my_iyol, "generated_data/blerg.RDS")
+
   # Apply universal slope correction
   # This replaces all the res_i_adj values in each subset and adds z-scored values in new column
   my_iyol <- apply_universal_slope(my_iyol)
@@ -453,7 +463,8 @@ apply_universal_slope <- function(data) {
 
   dsi_universal_slopes <- keep %>%
     dplyr::group_by(sex, dyad_type) %>%
-    dplyr::summarise(univ = list(lm(log2_i_adj ~ log2OE))) %>%
+    dplyr::summarise(univ = list(lm(log2_i_adj ~ log2OE)),
+                     .groups = "drop") %>%
     dplyr::mutate(coefs = map(univ, broom::tidy)) %>%
     dplyr::select(-univ) %>%
     tidyr::unnest_legacy() %>%
@@ -600,7 +611,8 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
       dplyr::group_by(sname, grp, sname_sex) %>%
       dplyr::summarise(days_present = dplyr::n(),
                        start = min(date),
-                       end = max(date))
+                       end = max(date),
+                       .groups = "drop")
   } else {
     my_members <- dplyr::filter(members_l, date >= my_start & date <= my_end)
 
@@ -632,12 +644,14 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
       dplyr::group_by(sname, grp, sname_sex) %>%
       dplyr::summarise(days_present = dplyr::n(),
                        start = min(date),
-                       end = max(date))
+                       end = max(date),
+                       .groups = "drop")
   }
 
   # For each of these records, find all possible dyad partners
   # Store as new list column and unnest_legacy to expand
   dyads <- my_subset %>%
+    group_by(sname, grp) %>%
     dplyr::mutate(partner = list(my_subset$sname[my_subset$sname != sname])) %>%
     tidyr::unnest_legacy()
 
@@ -673,6 +687,7 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
   my_subset <- my_subset %>%
     dplyr::mutate(coresidence_dates = purrr::pmap(list(sname, partner, grp, partner_grp),
                                                   get_overlap_dates)) %>%
+    ungroup() %>%
     dplyr::rowwise() %>%
     dplyr::mutate(coresidence_days = length(coresidence_dates)) %>%
     dplyr::ungroup() %>%
@@ -730,6 +745,7 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
     # Classify dyads by dyad type ("F-F", "F-M", or "M-M"), and nest by dyad type
     # Since this is not directional, "F-M" and "M-F" are combined into one category: F-M
     my_subset <- my_subset %>%
+      ungroup() %>%
       dplyr::rowwise() %>%
       dplyr::mutate(dyad = paste(sort(c(sname, partner)), collapse = '-'),
                     dyad_type = paste(sort(c(sname_sex, partner_sex)), collapse = '-')) %>%
@@ -774,6 +790,7 @@ get_dyadic_subset <- function(df, biograph_l, members_l, focals_l, females_l,
     # Since this is directional, "F-M" and "M-F" are distinguished
     # Nest by dyad type
     my_subset <- my_subset %>%
+      ungroup() %>%
       dplyr::rowwise() %>%
       dplyr::mutate(dyad = paste(anim1, anim2, sep = '-'),
                     dyad_type = paste(anim1_sex, anim2_sex, sep = '-')) %>%
@@ -857,7 +874,8 @@ get_focal_index <- function(my_sname, my_grp, my_subset) {
     dplyr::group_by(dyad_type) %>%
     dplyr::filter(i_adj > 0) %>%
     dplyr::summarise(perc_50 = quantile(res_i_adj_s, probs = 0.5),
-                     perc_90 = quantile(res_i_adj_s, probs = 0.9))
+                     perc_90 = quantile(res_i_adj_s, probs = 0.9),
+                     .groups = "drop")
 
   # Add percentile columns to my_subset
   my_subset <- dplyr::left_join(my_subset, percs, by = "dyad_type")
@@ -1055,13 +1073,15 @@ dyadic_row_summary <- function(df, focal, directional) {
       dplyr::filter(res_i_adj_s > -9999) %>%
       dplyr::group_by(dyad_type, direction) %>%
       dplyr::summarise(r_strength = mean(res_i_adj_s, na.rm = TRUE),
-                       n = n())
+                       n = n(),
+                       .groups = "drop")
 
     r_reciprocity <- top_partners %>%
       dplyr::mutate(recip = (i_received - i_given) / (i_given + i_received)) %>%
       dplyr::group_by(dyad_type, direction) %>%
       dplyr::summarise(r_reciprocity = mean(recip, na.rm = TRUE),
-                       n = n())
+                       n = n(),
+                       .groups = "drop")
   } else {
     # Relationship quantity is the number of bonds in each bond-strength category
     r_quantity <- df %>%
@@ -1082,13 +1102,15 @@ dyadic_row_summary <- function(df, focal, directional) {
       dplyr::filter(res_i_adj_s > -9999) %>%
       dplyr::group_by(dyad_type) %>%
       dplyr::summarise(r_strength = mean(res_i_adj_s, na.rm = TRUE),
-                       n = n())
+                       n = n(),
+                       .groups = "drop")
 
     r_reciprocity <- top_partners %>%
       dplyr::mutate(recip = 1 - abs((i_given - i_received) / (i_given + i_received))) %>%
       dplyr::group_by(dyad_type) %>%
       dplyr::summarise(r_reciprocity = mean(recip, na.rm = TRUE),
-                       n = n())
+                       n = n(),
+                       .groups = "drop")
   }
 
   res <- tibble(top_partners = list(top_partners),
