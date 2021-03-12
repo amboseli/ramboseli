@@ -427,8 +427,6 @@ dyadic_index <- function(my_iyol, biograph_l, members_l, focals_l, females_l, in
     close(pb)
   }
 
-  saveRDS(my_iyol, "generated_data/blerg.RDS")
-
   # Apply universal slope correction
   # This replaces all the res_i_adj values in each subset and adds z-scored values in new column
   my_iyol <- apply_universal_slope(my_iyol)
