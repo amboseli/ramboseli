@@ -1,13 +1,13 @@
-get_mem_dates <- function(my_sub, members_l, df, sel = NULL) {
+get_mem_dates <- function(my_sub, my_mem, my_foc, sel = NULL) {
 
   mem_dates <- my_sub %>%
     dplyr::ungroup() %>%
-    dplyr::inner_join(df, by = "grp") %>%
+    dplyr::inner_join(my_foc, by = "grp") %>%
     dplyr::filter(date >= start & date <= end)
 
   # Remove all rows for dates when the particular animal wasn't present in grp
   remove_rows <- mem_dates %>%
-    dplyr::anti_join(members_l, by = c("sname", "grp", "date"))
+    dplyr::anti_join(my_mem, by = c("sname", "grp", "date"))
 
   # Take set difference and calculate summary
   mem_dates <- mem_dates %>%
