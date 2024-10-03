@@ -1,4 +1,4 @@
-An R package for the ARBP
+An R package for the ABRP
 ================
 
 ![](img/amboseli_small.jpg)
