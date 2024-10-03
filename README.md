@@ -79,6 +79,8 @@ Once this is done, the tunnel has been created. Keep the Terminal window open an
 
 ### Creating a Tunnel on Windows
 
+(IT IS KNOWN THAT THESE INSTRUCTIONS DO NOT WORK.  EVERY WINDOWS USER FIGURES SOMETHING OUT BUT NEVER REPORTS BACK WHAT THEY DID.  1000 POINTS TO THE PERSON WHO HELPS GETS THESE INSTRUCTIONS TO ACTUALLY BE CORRECT!)
+
 This is a little more complicated. I don't have a Windows machine to test it on, but I *think* this should work. Please let me know ( <camposfa@gmail.com> ) if you try and can't get it to work properly.
 
 -   Download and install PuTTY, a free SSH client for Windows: <http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html>
