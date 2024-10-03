@@ -120,6 +120,12 @@ subset_members <- function(babase, .adults_only = TRUE) {
 
 #' Obtain a subset of adult female focal samples that excludes behavioral observation gaps.
 #'
+#' As of midday 2024-10-01, the handwritten "historic" focals got
+#' added to the SAMPLES table.  We're not yet ready to actually deal
+#' with those new samples yet, so instead of the regular SAMPLES table
+#' we'll use a temporary table in babase_pending that contains only the
+#' data in SAMPLES before the big addition.
+#'
 #' @param babase A DBI connection to the babase database
 #' @param members_l A subset of members table produced by the function 'subset_members'
 #'
@@ -140,12 +146,12 @@ subset_focals <- function(babase, members_l) {
   # Database connections
   biograph <- dplyr::tbl(babase, "biograph")
   maturedates <- dplyr::tbl(babase, "maturedates")
-  samples <- dplyr::tbl(babase, "samples")
+  samples <- dplyr::tbl(babase, dbplyr::in_schema("babase_pending", "samples_pre_historic"))
   point_data <- dplyr::tbl(babase, "point_data")
-  altos_points_84to96mar3 <- dplyr::tbl(babase, dbplyr::in_schema("babase_pending", "altos_points_84to96mar3"))
-  altos_points_96marto99 <- dplyr::tbl(babase, dbplyr::in_schema("babase_pending", "altos_points_96marto99"))
-  hooks_points_84to96 <- dplyr::tbl(babase, dbplyr::in_schema("babase_pending", "hooks_points_84to96"))
-  hooks_points_96to99 <- dplyr::tbl(babase, dbplyr::in_schema("babase_pending", "hooks_points_96to99"))
+  altos_points_84to96mar3 <- dplyr::tbl(babase, dbplyr::in_schema("archived_data", "altos_points_84to96mar3"))
+  altos_points_96marto99 <- dplyr::tbl(babase, dbplyr::in_schema("archived_data", "altos_points_96marto99"))
+  hooks_points_84to96 <- dplyr::tbl(babase, dbplyr::in_schema("archived_data", "hooks_points_84to96"))
+  hooks_points_96to99 <- dplyr::tbl(babase, dbplyr::in_schema("archived_data", "hooks_points_96to99"))
 
   # Local
   biograph_l <- dplyr::collect(biograph)
