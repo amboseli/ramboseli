@@ -57,13 +57,22 @@ First, you must have a username and password for the babase database. If you're 
 
 <br>
 
-### Creating a Tunnel on Mac/Linux
+### Creating a Tunnel
 
-The simplest way to create the tunnel on a Mac/Linux is to open a terminal window and type the following, substituting your actual username for "YourUsername":
+These instructions are known to work in macOS and Linux.  They have not been tested but should also work in Windows, provided that you are using one of:
+   1) Windows 11 or newer
+   2) Windows 10 from 2018 or later
+   3) Windows 10 from before 2018 but with the 2018 update for native SSH
 
-    ssh -f YourUsername@papio.biology.duke.edu -L 2222:localhost:5432 -N
+(If you are a Windows user and these instructions work for you, please let Jake know.)
 
-Your Terminal window should then prompt you for your password for papio.biology.duke.edu. After that's entered, a message appears indicating that the connection has been made:
+The simplest way to create the tunnel is at the command line.  In macOS/Linux, open a Terminal window.  In Windows, open a Powershell or Command Prompt window.  Type the following, substituting your actual Duke NetID for "YourNetID":
+
+    ssh -f YourNetID@papio.biology.duke.edu -L 2222:localhost:5432 -N
+
+    (If you're a Windows user, don't include the "-f")
+
+Your Terminal window should then prompt you for your password for papio.biology.duke.edu.  Provide the password for your _NetID_, not your Babase password.  You will then have to provide another form of authentication.  If you haven't already setup MFA with Duke, talk to Jake. After that's done, a message appears indicating that the connection has been made:
 
     ###############################################################################
     # You are about to access a Duke University computer network that is intended #
@@ -73,41 +82,7 @@ Your Terminal window should then prompt you for your password for papio.biology.
     # network for any purpose including criminal prosecution.                     #
     ###############################################################################
 
-Once this is done, the tunnel has been created. Keep the Terminal window open and return to R for your analysis.
-
-<br>
-
-### Creating a Tunnel on Windows
-
-(IT IS KNOWN THAT THESE INSTRUCTIONS DO NOT WORK.  EVERY WINDOWS USER FIGURES SOMETHING OUT BUT NEVER REPORTS BACK WHAT THEY DID.  1000 POINTS TO THE PERSON WHO HELPS GETS THESE INSTRUCTIONS TO ACTUALLY BE CORRECT!)
-
-This is a little more complicated. I don't have a Windows machine to test it on, but I *think* this should work. Please let me know ( <camposfa@gmail.com> ) if you try and can't get it to work properly.
-
--   Download and install PuTTY, a free SSH client for Windows: <http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html>
-    1.  Scroll down the page and find the link for the appropriate Windows Installer. It should be called something like `putty-0.70-installer.msi` (version number might differ).
-    2.  Download and install the software.
-    3.  Once the installation is complete, note the location where PuTTY was installed. It should be in:
-        1.  `C:\Program Files (x86)\PuTTY\` or
-        2.  `C:\Program Files\PuTTY\`
--   Create a batch file that will open the SSH tunnel
-    1.  Open Notepad or any other text editor.
-    2.  Type in the following text, all on one line, *including the quotation marks,* replacing "YourUsername" with your username, and replacing "YourPassword" with your password. Note that you may need to replace "Program Files" with "Program Files (x86)"
-
-<!-- -->
-
-    "C:\Program Files\PuTTY\plink.exe" ssh -f YourUsername@papio.biology.duke.edu -L 2222:localhost:5432 -N -pw YourPassword
-
-Alternatively, if you don't want to save your password in a plain text file, use the following text that will prompt you for your password each time you run the batch file.
-
-    "C:\Program Files\PuTTY\plink.exe" ssh -f YourUsername@papio.biology.duke.edu -L 2222:localhost:5432 -N
-
--   Save the batch file somewhere convenient with a name like "babase\_tunnel.bat"
-
--   Open the SSH tunnel
-    1.  Run the batch file that you just created by double clicking on it.
-    2.  If there is an error, the window will close on its own, you will have no tunnel, and you will need to correct the errors!
-    3.  If you are successful, a command prompt window will display the text in the batch file, along with a message.
-    4.  You can leave this window open or minimize it, but don't close it until you want to close the tunnel!
+Once this is done, the tunnel has been created. Keep the Terminal/Powershell/Command Prompt window open and return to R for your analysis.
 
 <br>
 
