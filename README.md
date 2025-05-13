@@ -70,7 +70,7 @@ The simplest way to create the tunnel is at the command line.  In macOS/Linux, o
 
     ssh -f YourNetID@papio.biology.duke.edu -L 2222:localhost:5432 -N
 
-    (If you're a Windows user, don't include the "-f")
+(If you're a Windows user, don't include the "-f")
 
 Your Terminal window should then prompt you for your password for papio.biology.duke.edu.  Provide the password for your _NetID_, not your Babase password.  You will then have to provide another form of authentication.  If you haven't already setup MFA with Duke, talk to Jake. After that's done, a message appears indicating that the connection has been made:
 
