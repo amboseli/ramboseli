@@ -1,5 +1,5 @@
 ---
-title: "An R package for the ARBP"
+title: "An R package for the ABRP"
 output: github_document
 ---
 
@@ -65,15 +65,25 @@ First, you must have a username and password for the babase database. If you're 
 
 <br>
 
-### Creating a Tunnel on Mac/Linux
+### Creating a Tunnel
 
-The simplest way to create the tunnel on a Mac/Linux is to open a terminal window and type the following, substituting your actual username for "YourUsername":
+These instructions are known to work in macOS and Linux. They have not been tested but should also work in Windows, provided that you are using one of:
+
+1. Windows 11 or newer
+2. Windows 10 from 2018 or later
+3. Windows 10 from before 2018 but with the 2018 update for native SSH
+
+(If you are a Windows user and these instructions work for you, please let Jake know.)
+
+The simplest way to create the tunnel is at the command line. In macOS/Linux, open a Terminal window. In Windows, open a Powershell or Command Prompt window. Type the following, substituting your actual Duke NetID for "YourNetID":
 
 ```
-ssh -f YourUsername@papio.biology.duke.edu -L 2222:localhost:5432 -N
+ssh -f YourNetID@papio.biology.duke.edu -L 2222:localhost:5432 -N
 ```
 
-Your Terminal window should then prompt you for your password for papio.biology.duke.edu. After that's entered, a message appears indicating that the connection has been made:
+(If you're a Windows user, don't include the `-f`.)
+
+Your Terminal window should then prompt you for your password for papio.biology.duke.edu. Provide the password for your _NetID_, not your Babase password. You will then have to provide another form of authentication. If you haven't already setup MFA with Duke, talk to Jake. After that's done, a message appears indicating that the connection has been made:
 
 ```
 ###############################################################################
@@ -85,44 +95,9 @@ Your Terminal window should then prompt you for your password for papio.biology.
 ###############################################################################
 ```
 
-Once this is done, the tunnel has been created. Keep the Terminal window open and return to R for your analysis.
-
-
-<br>
-
-### Creating a Tunnel on Windows
-
-This is a little more complicated. I don't have a Windows machine to test it on, but I _think_ this should work. Please let me know ( [camposfa@gmail.com](mailto:camposfa@gmail.com) ) if you try and can't get it to work properly.
-
-- Download and install PuTTY, a free SSH client for Windows: http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html 
-    a. Scroll down the page and find the link for the appropriate Windows Installer. It should be called something like `putty-0.70-installer.msi` (version number might differ).
-    b. Download and install the software.
-    c. Once the installation is complete, note the location where PuTTY was installed. It should be in: 
-        i. `C:\Program Files (x86)\PuTTY\` or 
-        ii. `C:\Program Files\PuTTY\`
-
-- Create a batch file that will open the SSH tunnel
-    a. Open Notepad or any other text editor.
-    b. Type in the following text, all on one line, _including the quotation marks,_ replacing "YourUsername" with your username, and replacing "YourPassword" with your password. Note that you may need to replace "Program Files" with "Program Files (x86)"
-
-```
-"C:\Program Files\PuTTY\plink.exe" ssh -f YourUsername@papio.biology.duke.edu -L 2222:localhost:5432 -N -pw YourPassword
-```
-Alternatively, if you don't want to save your password in a plain text file, use the following text that will prompt you for your password each time you run the batch file.
-```
-"C:\Program Files\PuTTY\plink.exe" ssh -f YourUsername@papio.biology.duke.edu -L 2222:localhost:5432 -N
-```
-
-- Save the batch file somewhere convenient with a name like "babase_tunnel.bat"
-
-- Open the SSH tunnel
-    a. Run the batch file that you just created by double clicking on it.
-    b. If there is an error, the window will close on its own, you will have no tunnel, and you will need to correct the errors!
-    c. If you are successful, a command prompt window will display the text in the batch file, along with a message.
-    d. You can leave this window open or minimize it, but don't close it until you want to close the tunnel!
+Once this is done, the tunnel has been created. Keep the Terminal/Powershell/Command Prompt window open and return to R for your analysis.
 
 <br>
-
 
 ### Additional Notes
 
@@ -139,14 +114,15 @@ Every so often, when the connection is left idle, the tunnel seems to get corrup
 ps aux | grep ssh
 ```
 
-A list of processes should appear in the window, similar to this
+A list of processes should appear in the window, similar to this:
 
 ```
 fac13            23128   0.0  0.0  2445836    260   ??  S    25Jun18   0:00.02 /usr/bin/ssh-agent -l
 fac13            14419   0.0  0.0  2432804    776 s000  S+   12:30PM   0:00.00 grep ssh
 fac13            14205   0.0  0.0  2462536    904   ??  Ss   12:27PM   0:00.00 ssh -f fac13@papio.biology.duke.edu -L 2222:localhost:5432 -N
 ```
-The last process is the corrupted tunnel. Kill it by typing `kill` followed by the process ID number: 
+
+The last process is the corrupted tunnel. Kill it by typing `kill` followed by the process ID number:
 
 ```
 kill 14205
@@ -217,7 +193,6 @@ all_ranks <- tbl(babase, in_schema("babase_pending", "ALL_RANKS"))
 collect(all_ranks)
 ```
 
-
 <br>
 <hr>
 <br>
@@ -225,18 +200,13 @@ collect(all_ranks)
 # Best practices for using `ramboseli` functions
 
 1. Supply a database connection and no tables to obtain data directly through queries
-  
+
     * Uses most up-to-date data
     * Use when carrying out exploratory analysis
     * Not reproducible
-  
+
 2. Supply tables from the R environment and no database connection
 
     * Uses static input files (a "snapshot" of specific babase tables)
     * Reqires that user queries database first to produce static files and loads them into R environment
     * Use for final analysis if you need reproducibility
-  
-
-
-
-
