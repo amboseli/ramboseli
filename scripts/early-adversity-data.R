@@ -282,7 +282,7 @@ saveRDS(mom_dsi_summary, paste0("data/mom_dsi_summary_", Sys.Date(), ".RDS"))
 
 # ---- COVARIATES-FOR-GC --------------------------------------------------
 
-# Make members and grooming subsets that exclude behavioral observation gaps AND that include juvenile data
+# Make members and grooming subsets that exclude flagged behavioral observation periods AND that include juvenile data
 members_l2 <- subset_members(babase, .adults_only = FALSE)
 grooming_l2 <- subset_interactions(babase, members_l2, my_acts = c("G"), .adults_only = FALSE)
 
@@ -294,7 +294,7 @@ gc <- tbl(babase, in_schema("fecal", "prep")) %>%
 
 # Add information about grp and sex from members, and restrict to measurable samples from our subjects
 # Note that the inner_join on the subset of members removes fGC samples collected from individuals during
-# behave_gaps, group fissions, non-study groups, etc.
+# behave_flags, group fissions, non-study groups, etc.
 gc <- gc %>%
   inner_join(select(members_l2, sname, date, grp, sex),
              by = c("sname", "date")) %>%

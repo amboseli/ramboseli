@@ -1,5 +1,6 @@
 
-#' Obtain a subset of members table that excludes behavioral observation gaps.
+#' Obtain a subset of members table that excludes flagged behavioral observation periods.
+#' (The Babase documentation specifically warns against doing this, so this should be fixed)
 #'
 #' @param babase A DBI connection to the babase database
 #' @param .adults_only Logical indicating whether to include adults only. Default is TRUE
@@ -23,7 +24,7 @@ subset_members <- function(babase, .adults_only = TRUE) {
   maturedates <- dplyr::tbl(babase, "maturedates")
   rankdates <- dplyr::tbl(babase, "rankdates")
   groups_history <- dplyr::tbl(babase, "groups_history")
-  behave_gaps <- dplyr::tbl(babase, "behave_gaps")
+  behave_flags <- dplyr::tbl(babase, "behave_flags")
   members <- dplyr::tbl(babase, "members")
 
   md_females <- maturedates %>%
@@ -57,9 +58,9 @@ subset_members <- function(babase, .adults_only = TRUE) {
       dplyr::filter((sex == "F" & date >= matured) | (sex == "M" & date >= ranked))
     }
 
-  # Find behavior gaps that overlap records in members_keep
+  # Find behavior flags that overlap records in members_keep
   bg <- members_keep %>%
-    dplyr::left_join(behave_gaps, by = "grp") %>%
+    dplyr::left_join(behave_flags, by = "grp") %>%
     dplyr::filter(date >= gap_start & date <= gap_end)
 
   # Exclude those records using anti_join
