@@ -55,7 +55,7 @@ biograph_l <- biograph_l %>%
   mutate(status = if_else(statdate > study_end, 0L, status),
          statdate = if_else(statdate > study_end, study_end, statdate))
 
-# Make a members subset that excludes behavioral observation gaps
+# Make a members subset that excludes flagged behavioral observation periods.
 members_l <- subset_members(babase)
 members_l <- members_l %>%
   filter(date <= study_end)

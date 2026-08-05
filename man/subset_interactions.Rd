@@ -2,7 +2,7 @@
 % Please edit documentation in R/biographical-data.R
 \name{subset_interactions}
 \alias{subset_interactions}
-\title{Obtain a subset of grooming data that excludes behavioral observation gaps.}
+\title{Obtain a subset of grooming data that excludes flagged behavioral observation periods.}
 \usage{
 subset_interactions(babase, members_l, my_acts = NULL,
   .adults_only = TRUE)
@@ -15,8 +15,8 @@ subset_interactions(babase, members_l, my_acts = NULL,
 \item{.adults_only}{Logical indicating whether to include adults only. Default is TRUE}
 }
 \value{
-A subset of grooming data that excludes behavioral observation gaps.
+A subset of grooming data that excludes flagged behavioral observation periods.
 }
 \description{
-Obtain a subset of grooming data that excludes behavioral observation gaps.
+Obtain a subset of grooming data that excludes flagged behavioral observation periods.
 }

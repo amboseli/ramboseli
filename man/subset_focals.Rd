@@ -2,7 +2,7 @@
 % Please edit documentation in R/biographical-data.R
 \name{subset_focals}
 \alias{subset_focals}
-\title{Obtain a subset of adult female focal samples that excludes behavioral observation gaps.}
+\title{Obtain a subset of adult female focal samples that excludes flagged behavioral observation periods.}
 \usage{
 subset_focals(babase, members_l)
 }
@@ -12,8 +12,8 @@ subset_focals(babase, members_l)
 \item{members_l}{A subset of members table produced by the function 'subset_members'}
 }
 \value{
-A subset of focal samples that excludes behavioral observation gaps.
+A subset of focal samples that excludes flagged behavioral observation periods.
 }
 \description{
-Obtain a subset of adult female focal samples that excludes behavioral observation gaps.
+Obtain a subset of adult female focal samples that excludes flagged behavioral observation periods.
 }

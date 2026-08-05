@@ -5,7 +5,7 @@
 #' @param babase A DBI connection to the babase database
 #' @param .adults_only Logical indicating whether to include adults only. Default is TRUE
 #'
-#' @return A subset of the members table that excludes behavioral observation gaps.
+#' @return A subset of the members table that excludes flagged behavioral observation periods.
 #' @export
 #'
 #' @examples
@@ -61,7 +61,7 @@ subset_members <- function(babase, .adults_only = TRUE) {
   # Find behavior flags that overlap records in members_keep
   bg <- members_keep %>%
     dplyr::left_join(behave_flags, by = "grp") %>%
-    dplyr::filter(date >= gap_start & date <= gap_end)
+    dplyr::filter(date >= start & date <= finish)
 
   # Exclude those records using anti_join
   members_keep <- dplyr::anti_join(members_keep, bg, by = "membid") %>%
@@ -119,7 +119,7 @@ subset_members <- function(babase, .adults_only = TRUE) {
 }
 
 
-#' Obtain a subset of adult female focal samples that excludes behavioral observation gaps.
+#' Obtain a subset of adult female focal samples that excludes flagged behavioral observation periods.
 #'
 #' As of midday 2024-10-01, the handwritten "historic" focals got
 #' added to the SAMPLES table.  We're not yet ready to actually deal
@@ -130,7 +130,7 @@ subset_members <- function(babase, .adults_only = TRUE) {
 #' @param babase A DBI connection to the babase database
 #' @param members_l A subset of members table produced by the function 'subset_members'
 #'
-#' @return A subset of focal samples that excludes behavioral observation gaps.
+#' @return A subset of focal samples that excludes flagged behavioral observation periods.
 #' @export
 #'
 #' @examples
@@ -211,11 +211,11 @@ subset_focals <- function(babase, members_l) {
 }
 
 
-#' Obtain a subset of adult female count data that excludes behavioral observation gaps.
+#' Obtain a subset of adult female count data that excludes flagged behavioral observation periods.
 #'
 #' @param members_l A subset of members table produced by the function 'subset_members'
 #'
-#' @return A subset of female count data that excludes behavioral observation gaps.
+#' @return A subset of female count data that excludes flagged behavioral observation periods.
 #' @export
 #'
 #' @examples
@@ -235,13 +235,13 @@ subset_females <- function(members_l) {
 }
 
 
-#' Obtain a subset of grooming data that excludes behavioral observation gaps.
+#' Obtain a subset of grooming data that excludes flagged behavioral observation periods.
 #'
 #' @param babase A DBI connection to the babase database
 #' @param members_l A subset of members table produced by the function 'subset_members'
 #' @param .adults_only Logical indicating whether to include adults only. Default is TRUE
 #'
-#' @return A subset of grooming data that excludes behavioral observation gaps.
+#' @return A subset of grooming data that excludes flagged behavioral observation periods.
 #' @export
 #'
 #' @examples

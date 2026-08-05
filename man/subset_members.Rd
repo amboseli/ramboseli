@@ -2,7 +2,7 @@
 % Please edit documentation in R/biographical-data.R
 \name{subset_members}
 \alias{subset_members}
-\title{Obtain a subset of members table that excludes behavioral observation gaps.}
+\title{Obtain a subset of members table that excludes flagged behavioral observation periods.}
 \usage{
 subset_members(babase, .adults_only = TRUE)
 }
@@ -12,8 +12,8 @@ subset_members(babase, .adults_only = TRUE)
 \item{.adults_only}{Logical indicating whether to include adults only. Default is TRUE}
 }
 \value{
-A subset of the members table that excludes behavioral observation gaps.
+A subset of the members table that excludes flagged behavioral observation periods.
 }
 \description{
-Obtain a subset of members table that excludes behavioral observation gaps.
+Obtain a subset of members table that excludes flagged behavioral observation periods.
 }

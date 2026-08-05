@@ -45,7 +45,7 @@ biograph_l <- collect(tbl(babase, "biograph"))
 ### Subset the input data
 
 ``` r
-# Make a members subset that excludes behavioral observation gaps
+# Make a members subset that excludes flagged behavioral observation periods
 members_l <- subset_members(babase)
 
 # Subset other data sets used for sociality indices

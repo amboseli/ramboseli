@@ -32,7 +32,7 @@ babase <- DBI::dbConnect(
 # Get local copy of biograph table
 biograph_l <- collect(tbl(babase, "biograph"))
 
-# Make a members subset that excludes behavioral observation gaps
+# Make a members subset that excludes flagged behavioral observation periods.
 members_l <- subset_members(babase)
 
 # Subset other data sets used for sociality indices
